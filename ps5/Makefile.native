@@ -44,7 +44,7 @@ PIXMANFLAGS := -DHAVE_CONFIG_H -I$(PS5DIR)/pixman -I$(OUT)/pixman-inc -I$(DEPS)/
 LCF := $(DEPS)/liblcf
 LCF_SRC := $(wildcard $(LCF)/src/*.cpp) $(wildcard $(LCF)/src/generated/*.cpp)
 LCF_OBJS := $(patsubst $(LCF)/src/%.cpp,$(OUT)/lcf/%.o,$(LCF_SRC)) $(OUT)/inih/ini.o
-LCFFLAGS := -std=c++17 -I$(OUT)/lcf-inc -I$(LCF)/src -I$(LCF)/src/generated -I$(DEPS)/inih -w
+LCFFLAGS := -std=c++17 -isystem $(PS5_PACBREW_PREFIX)/include -I$(OUT)/lcf-inc -I$(LCF)/src -I$(LCF)/src/generated -I$(DEPS)/inih -w
 
 # --- the Player -----------------------------------------------------------
 PLAYER_SRC := $(filter-out registry_wine,$(notdir $(basename $(wildcard $(PLAYER)/src/*.cpp))))
@@ -69,7 +69,7 @@ $(OUT)/pixman-inc/pixman-version.h: $(DEPS)/pixman/pixman/pixman-version.h.in
 	    -e 's/@PIXMAN_VERSION_MICRO@/4/g' $< > $@
 $(OUT)/lcf-inc/lcf/config.h:
 	@mkdir -p $(@D)
-	printf '#define LCF_SUPPORT_ICU 0\n#define LCF_SUPPORT_XML 0\n#define LCF_SUPPORT_INI 1\n' > $@
+	printf '#define LCF_SUPPORT_ICU 0\n#define LCF_SUPPORT_ICONV 1\n#define LCF_SUPPORT_XML 0\n#define LCF_SUPPORT_INI 1\n' > $@
 
 $(OUT)/pixman/%.o: $(DEPS)/pixman/pixman/%.c $(OUT)/pixman-inc/pixman-version.h
 	@mkdir -p $(@D)

@@ -41,6 +41,39 @@ The older SDL version 1.2 is still supported, but deprecated.
 Please do not add new platform code for this library.
 
 
+## PlayStation 5
+
+This branch (`ps5`) builds the Player as a native PS5 title (`PPSA92046`) for
+[ShadowMountPlus](https://github.com/drakmor) and the homebrew catalog. It runs
+on a console that already runs homebrew; nothing here touches the system.
+
+* **Games:** put each game in its own folder under `/data/easyrpg/games/`
+  (e.g. over FTP) and pick it in the game browser. Saves go beside the game.
+  RTP, if a game needs it, goes in `/data/easyrpg/rtp/2000` or `/2003`.
+* **Settings** are kept in `/download0/easyrpg`; the log is
+  `/data/easyrpg-ps5.log`.
+* **Controls (DualSense):** Cross confirms, Circle and Triangle cancel / open
+  the menu, Square runs, R2 fast-forwards, Options opens the settings, Create
+  resets. A bar at the bottom of the screen shows what the buttons do in the
+  current scene.
+* **Display:** the frame is scaled by a whole number (no blurring);
+  *Stretch* in the video settings fills the screen instead.
+* **Text encoding:** Japanese, Korean and Chinese games are converted with
+  iconv (PacBrew has no ICU). The encoding is guessed from the game's text;
+  this has not been tested against a real Japanese game yet. If it guesses
+  wrong, set it in the settings or with `--encoding`.
+
+Building (in WSL, with `~/ps5-native-app-boilerplate`, `~/ps5-opengl` and
+`~/ps5-platform-sdk` set up as for the other ports):
+
+    cd ps5
+    bash fetch-deps.sh                # liblcf (+ iconv patch), pixman, inih
+    make -f Makefile.native -j$(nproc)
+    bash package-native.sh --build    # build-ps5/app/dist/PPSA92046{,.zip}
+
+The Player and its libraries use PS5 builds only (PacBrew and ps5-opengl's
+SDL2). The code is in `src/platform/ps5/`.
+
 ## Daily builds
 
 Up to date binaries for assorted platforms are available at our continuous

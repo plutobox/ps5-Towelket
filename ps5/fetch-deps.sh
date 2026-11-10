@@ -15,6 +15,9 @@ INIH_TAG=r58
 if [[ ! -d liblcf ]]; then
     git clone https://github.com/EasyRPG/liblcf.git liblcf
     git -C liblcf checkout "$LIBLCF_REF"
+    # iconv in place of ICU (PacBrew has none): code page conversion for
+    # Japanese, Korean and Chinese games, and a guess at their encoding.
+    git -C liblcf apply --whitespace=nowarn "$PWD/../liblcf-iconv.patch"
 fi
 if [[ ! -d pixman ]]; then
     curl -fsSL "https://cairographics.org/releases/pixman-$PIXMAN_VERSION.tar.gz" | tar xz

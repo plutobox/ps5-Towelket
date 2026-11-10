@@ -27,3 +27,11 @@ void *easyrpg_ps5_uselocale(void *locale)
 void *_pixman_arm_get_implementations(void *fallback) { return fallback; }
 void *_pixman_ppc_get_implementations(void *fallback) { return fallback; }
 void *_pixman_mips_get_implementations(void *fallback) { return fallback; }
+
+/* libiconv's wide-character loops ask for MB_CUR_MAX, which FreeBSD's libc
+ * spells ___mb_cur_max(); a title is not given it. The code pages used
+ * here never reach those loops, so the C locale's 1 is right. */
+int easyrpg_ps5____mb_cur_max(void)
+{
+    return 1;
+}

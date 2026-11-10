@@ -99,7 +99,7 @@ libraries=("$pacbrew/lib/libSDL2_ttf.a" "$pacbrew/lib/libfreetype.a"
            "$pacbrew/lib/libvorbisenc.a" "$pacbrew/lib/libsndfile.a"
            "$pacbrew/lib/libFLAC.a" "$pacbrew/lib/libopus.a"
            "$pacbrew/lib/libogg.a" "$pacbrew/lib/libmp3lame.a" "$pacbrew/lib/libsamplerate.a"
-           "$pacbrew/lib/libpng16.a" "$pacbrew/lib/libz.a" "$platform"
+           "$pacbrew/lib/libiconv.a" "$pacbrew/lib/libpng16.a" "$pacbrew/lib/libz.a" "$platform"
            "$sdl2/lib/libSDL2.a" "$opengl/lib/libPS5OpenGLCore33.a"
            "$sdk/target/lib/libunwind.a" "$sdk/target/lib/libc++abi.a"
            "$sdk/target/lib/libc++.a" "$compiler_rt")
@@ -136,7 +136,7 @@ for function in "${bound[@]}"; do
     defsyms+=("--defsym=$function=ps5_$function")
 done
 # What neither the console nor the platform layer provides: native_shims.c.
-for function in lstat uselocale; do
+for function in lstat uselocale ___mb_cur_max; do
     if [[ " ${used[*]} " == *" $function "* ]]; then
         defsyms+=("--defsym=$function=easyrpg_ps5_$function")
     fi
