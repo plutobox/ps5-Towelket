@@ -871,6 +871,16 @@ bool IsInstalled(const Entry& entry) {
 }
 
 void StartDownload(const Entry& entry) {
+	// main.cpp normally creates this at boot, but keep downloads self-contained
+	// so a catalog install still works if the library is started independently.
+	if (!MakeDirs(kGamesDir)) {
+		std::lock_guard<std::mutex> guard(lock);
+		download_status = Status();
+		download_status.state = State::Failed;
+		download_status.error = "Cannot create " + std::string(kGamesDir);
+		return;
+	}
+
 	{
 		std::lock_guard<std::mutex> guard(lock);
 		if (download_status.state == State::Working) {
