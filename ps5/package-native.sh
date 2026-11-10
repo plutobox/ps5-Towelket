@@ -99,7 +99,7 @@ libraries=("$pacbrew/lib/libSDL2_ttf.a" "$pacbrew/lib/libfreetype.a"
            "$pacbrew/lib/libvorbisenc.a" "$pacbrew/lib/libsndfile.a"
            "$pacbrew/lib/libFLAC.a" "$pacbrew/lib/libopus.a"
            "$pacbrew/lib/libogg.a" "$pacbrew/lib/libmp3lame.a" "$pacbrew/lib/libsamplerate.a"
-           "$pacbrew/lib/libiconv.a" "$pacbrew/lib/libpng16.a" "$pacbrew/lib/libz.a" "$platform"
+           "$pacbrew/lib/libcurl.a" "$pacbrew/lib/libpsl.a" "$pacbrew/lib/libssl.a" "$pacbrew/lib/libcrypto.a" "$pacbrew/lib/libzstd.a" "$pacbrew/lib/libiconv.a" "$pacbrew/lib/libpng16.a" "$pacbrew/lib/libz.a" "$platform"
            "$sdl2/lib/libSDL2.a" "$opengl/lib/libPS5OpenGLCore33.a"
            "$sdk/target/lib/libunwind.a" "$sdk/target/lib/libc++abi.a"
            "$sdk/target/lib/libc++.a" "$compiler_rt")
@@ -107,6 +107,13 @@ for path in "${libraries[@]}"; do
     [[ -f $path ]] || die "missing link input: $path"
 done
 mapfile -t objects < "$ps5dir/easyrpg-native.objs"
+# OpenSSL asks for _setjmp and _longjmp, which a title is not given: take the
+# SDK libc's own object for them (it only saves registers; it defines nothing
+# else a title could clash with).
+mkdir -p "$out/build/libc-members"
+(cd "$out/build/libc-members" && llvm-ar-18 x "$sdk/target/lib/libc.a" _setjmp.o) ||
+    die "cannot extract _setjmp.o from the SDK's libc.a"
+objects+=("$out/build/libc-members/_setjmp.o")
 for object in "${objects[@]}"; do
     [[ -f $object ]] || die "missing object: $object"
 done
@@ -136,7 +143,7 @@ for function in "${bound[@]}"; do
     defsyms+=("--defsym=$function=ps5_$function")
 done
 # What neither the console nor the platform layer provides: native_shims.c.
-for function in lstat uselocale ___mb_cur_max; do
+for function in lstat uselocale ___mb_cur_max pipe2 sendmmsg recvmmsg; do
     if [[ " ${used[*]} " == *" $function "* ]]; then
         defsyms+=("--defsym=$function=easyrpg_ps5_$function")
     fi
@@ -179,6 +186,10 @@ mkdir -p "$out/root"
 font=${PS5_HINT_FONT:-/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf}
 [[ -f $font ]] || die "missing hint font: $font"
 cp "$font" "$out/root/DejaVuSans-Bold.ttf"
+# The CA certificates the game library checks HTTPS servers against (PacBrew's bundle).
+cabundle="$pacbrew/etc/ca-bundle.crt"
+[[ -f $cabundle ]] || die "missing CA bundle: $cabundle"
+cp "$cabundle" "$out/root/cacert.pem"
 cp "$ps5dir/DejaVu-LICENSE.txt" "$out/root/DejaVu-LICENSE.txt"
 
 # Title metadata and art.

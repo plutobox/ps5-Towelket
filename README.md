@@ -50,6 +50,12 @@ on a console that already runs homebrew; nothing here touches the system.
 * **Games:** put each game in its own folder under `/data/easyrpg/games/`
   (e.g. over FTP) and pick it in the game browser. Saves go beside the game.
   RTP, if a game needs it, goes in `/data/easyrpg/rtp/2000` or `/2003`.
+* **Library:** the game browser's *Library* tab downloads games from the
+  catalog `games.json` in this repository (fetched from GitHub, over HTTPS).
+  Pick a game with Cross; Circle cancels a download. It is saved as a ZIP in
+  the games folder and shows up under *Games*. Each entry only links to the
+  author's own download; the catalog must list freely available games only.
+  To try another catalog, put its URL in `/data/easyrpg/library-url.txt`.
 * **Settings** are kept in `/download0/easyrpg`; the log is
   `/data/easyrpg-ps5.log`.
 * **Controls (DualSense):** Cross confirms, Circle and Triangle cancel / open

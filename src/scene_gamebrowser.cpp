@@ -31,6 +31,10 @@
 #include "bitmap.h"
 #include "audio.h"
 #include "output.h"
+#ifdef PLAYER_PS5
+#  include "platform/ps5/library.h"
+#  include <cstdio>
+#endif
 
 Scene_GameBrowser::Scene_GameBrowser() {
 	type = Scene::GameBrowser;
@@ -78,6 +82,10 @@ void Scene_GameBrowser::vUpdate() {
 
 	command_window->Update();
 	gamelist_window->Update();
+#ifdef PLAYER_PS5
+	library_window->Update();
+	UpdateLibraryStatus();
+#endif
 
 	if (command_window->GetActive()) {
 		UpdateCommand();
@@ -85,6 +93,11 @@ void Scene_GameBrowser::vUpdate() {
 	else if (gamelist_window->GetActive()) {
 		UpdateGameListSelection();
 	}
+#ifdef PLAYER_PS5
+	else if (library_window->GetActive()) {
+		UpdateLibrary();
+	}
+#endif
 }
 
 void Scene_GameBrowser::CreateWindows() {
@@ -92,6 +105,9 @@ void Scene_GameBrowser::CreateWindows() {
 	std::vector<std::string> options;
 
 	options.push_back("Games");
+#ifdef PLAYER_PS5
+	options.push_back("Library");
+#endif
 	options.push_back("Settings");
 	options.push_back("About");
 	options.push_back("Exit");
@@ -114,6 +130,12 @@ void Scene_GameBrowser::CreateWindows() {
 	load_window->SetText("Loading...");
 	load_window->SetVisible(false);
 
+#ifdef PLAYER_PS5
+	library_window = std::make_unique<Window_Library>(0, 64, Player::screen_width, Player::screen_height - 64);
+	library_window->SetMessage("Loading the library...", false);
+	library_window->SetVisible(false);
+#endif
+
 	about_window = std::make_unique<Window_About>(0, 64, Player::screen_width, Player::screen_height - 64);
 	about_window->Refresh();
 	about_window->SetVisible(false);
@@ -126,10 +148,26 @@ void Scene_GameBrowser::UpdateCommand() {
 		case GameList:
 			gamelist_window->SetVisible(true);
 			about_window->SetVisible(false);
+#ifdef PLAYER_PS5
+			library_window->SetVisible(false);
+#endif
 			break;
+#ifdef PLAYER_PS5
+		case Library:
+			gamelist_window->SetVisible(false);
+			about_window->SetVisible(false);
+			library_window->SetVisible(true);
+			if (Ps5Library::CatalogStatus().state == Ps5Library::State::Idle) {
+				Ps5Library::FetchCatalog();
+			}
+			break;
+#endif
 		case About:
 			gamelist_window->SetVisible(false);
 			about_window->SetVisible(true);
+#ifdef PLAYER_PS5
+			library_window->SetVisible(false);
+#endif
 			break;
 		default:
 			break;
@@ -150,6 +188,14 @@ void Scene_GameBrowser::UpdateCommand() {
 				gamelist_window->SetActive(true);
 				gamelist_window->SetIndex(old_gamelist_index);
 				break;
+#ifdef PLAYER_PS5
+			case Library:
+				command_window->SetActive(false);
+				command_window->SetIndex(-1);
+				library_window->SetActive(true);
+				library_window->SetIndex(library_window->HasEntries() ? 0 : -1);
+				break;
+#endif
 			case About:
 				break;
 			case Options:
@@ -246,3 +292,120 @@ void Scene_GameBrowser::BootGame() {
 
 	Scene::PushTitleScene();
 }
+
+#ifdef PLAYER_PS5
+
+namespace {
+	std::string Mb(int64_t bytes) {
+		char buf[32];
+		std::snprintf(buf, sizeof buf, "%.1f", static_cast<double>(bytes) / (1024 * 1024));
+		return buf;
+	}
+}
+
+// The help line over the list: about the selected game when idle.
+void Scene_GameBrowser::ShowLibraryHelp() {
+	const auto* e = library_window->GetSelected();
+	if (e && library_window->GetActive()) {
+		std::string text = e->author.empty() ? e->license : (e->license.empty() ? e->author : e->author + " - " + e->license);
+		help_window->SetText(text.empty() ? e->name : text);
+	} else {
+		help_window->SetText("EasyRPG Player - RPG Maker 2000/2003 interpreter");
+	}
+}
+
+// Follows the catalog fetch and the download; run every frame.
+void Scene_GameBrowser::UpdateLibraryStatus() {
+	using Ps5Library::State;
+
+	auto catalog = Ps5Library::CatalogStatus();
+	if (static_cast<int>(catalog.state) != library_catalog_state) {
+		library_catalog_state = static_cast<int>(catalog.state);
+		switch (catalog.state) {
+			case State::Working:
+				library_window->SetMessage("Loading the library...", false);
+				break;
+			case State::Done:
+				library_window->SetEntries(Ps5Library::Catalog());
+				if (library_window->GetActive()) {
+					library_window->SetIndex(library_window->HasEntries() ? 0 : -1);
+				}
+				break;
+			case State::Failed:
+				library_window->SetMessage("Could not load the library: " + catalog.error + "  (Retry: confirm)", true);
+				break;
+			default:
+				break;
+		}
+	}
+
+	if (!library_downloading) {
+		if (library_window->GetActive()) {
+			ShowLibraryHelp();
+		}
+		return;
+	}
+
+	auto status = Ps5Library::DownloadStatus();
+	switch (status.state) {
+		case State::Working: {
+			std::string text = "Downloading " + library_download_name;
+			if (status.total > 0) {
+				text += ": " + std::to_string(static_cast<int>(status.done * 100 / status.total)) + "% ("
+					+ Mb(status.done) + " / " + Mb(status.total) + " MB)";
+			} else {
+				text += ": " + Mb(status.done) + " MB";
+			}
+			help_window->SetText(text);
+			break;
+		}
+		case State::Done:
+			library_downloading = false;
+			library_window->Refresh();
+			// The new archive is not in the cached directory listing yet.
+			stack.back().filesystem.ClearCache();
+			gamelist_window->Refresh(stack.back().filesystem, stack.size() > 1);
+			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
+			help_window->SetText(library_download_name + " is installed. Find it under Games.");
+			break;
+		case State::Failed:
+			library_downloading = false;
+			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
+			help_window->SetText("Download failed: " + status.error, Font::ColorKnockout);
+			break;
+		default:
+			break;
+	}
+}
+
+void Scene_GameBrowser::UpdateLibrary() {
+	using Ps5Library::State;
+
+	if (Input::IsTriggered(Input::CANCEL)) {
+		if (library_downloading) {
+			Ps5Library::CancelDownload();
+			return;
+		}
+		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
+		library_window->SetActive(false);
+		library_window->SetIndex(-1);
+		command_window->SetActive(true);
+		command_window->SetIndex(Library);
+		help_window->SetText("EasyRPG Player - RPG Maker 2000/2003 interpreter");
+	} else if (Input::IsTriggered(Input::DECISION)) {
+		if (Ps5Library::CatalogStatus().state == State::Failed) {
+			Ps5Library::FetchCatalog(); // retry
+			return;
+		}
+		const auto* e = library_window->GetSelected();
+		if (!e || library_downloading || Ps5Library::IsInstalled(*e)) {
+			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
+			return;
+		}
+		library_download_name = e->name;
+		library_downloading = true;
+		Ps5Library::StartDownload(*e);
+	}
+}
+
+#endif

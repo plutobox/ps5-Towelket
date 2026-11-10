@@ -24,6 +24,9 @@
 #include "window_command_horizontal.h"
 #include "window_help.h"
 #include "window_gamelist.h"
+#ifdef PLAYER_PS5
+#  include "platform/ps5/window_library.h"
+#endif
 
 /**
  * Game browser class.
@@ -62,6 +65,9 @@ public:
 	/** Options available in a Rpg2k3 menu. */
 	enum CommandOptionType {
 		GameList = 0,
+#ifdef PLAYER_PS5
+		Library,
+#endif
 		Options,
 		About,
 		Quit
@@ -84,6 +90,19 @@ private:
 	std::unique_ptr<Window_About> about_window;
 
 	bool game_loading = false;
+
+#ifdef PLAYER_PS5
+	/** Downloadable games (the game library). */
+	std::unique_ptr<Window_Library> library_window;
+
+	void UpdateLibrary();
+	void UpdateLibraryStatus();
+	void ShowLibraryHelp();
+
+	int library_catalog_state = -1;
+	bool library_downloading = false;
+	std::string library_download_name;
+#endif
 
 	int old_gamelist_index = 0;
 
