@@ -33,6 +33,7 @@
 #include "output.h"
 #ifdef PLAYER_PS5
 #  include "platform/ps5/library.h"
+#  include "platform/ps5/text_input.h"
 #  include <cstdio>
 #endif
 
@@ -131,7 +132,10 @@ void Scene_GameBrowser::CreateWindows() {
 	load_window->SetVisible(false);
 
 #ifdef PLAYER_PS5
-	library_window = std::make_unique<Window_Library>(0, 64, Player::screen_width, Player::screen_height - 64);
+	search_window = std::make_unique<Window_Help>(0, 64, Player::screen_width, 32);
+	search_window->SetVisible(false);
+	UpdateSearchText();
+	library_window = std::make_unique<Window_Library>(0, 96, Player::screen_width, Player::screen_height - 96);
 	library_window->SetMessage("Loading the library...", false);
 	library_window->SetVisible(false);
 #endif
@@ -150,6 +154,7 @@ void Scene_GameBrowser::UpdateCommand() {
 			about_window->SetVisible(false);
 #ifdef PLAYER_PS5
 			library_window->SetVisible(false);
+			search_window->SetVisible(false);
 #endif
 			break;
 #ifdef PLAYER_PS5
@@ -157,6 +162,7 @@ void Scene_GameBrowser::UpdateCommand() {
 			gamelist_window->SetVisible(false);
 			about_window->SetVisible(false);
 			library_window->SetVisible(true);
+			search_window->SetVisible(true);
 			if (Ps5Library::CatalogStatus().state == Ps5Library::State::Idle) {
 				Ps5Library::FetchCatalog();
 			}
@@ -167,6 +173,7 @@ void Scene_GameBrowser::UpdateCommand() {
 			about_window->SetVisible(true);
 #ifdef PLAYER_PS5
 			library_window->SetVisible(false);
+			search_window->SetVisible(false);
 #endif
 			break;
 		default:
@@ -305,6 +312,12 @@ namespace {
 	}
 }
 
+void Scene_GameBrowser::UpdateSearchText() {
+	const std::string& f = library_window ? library_window->GetFilter() : std::string();
+	search_window->SetText(f.empty() ? "Search: (all games)    Triangle: search by name"
+		: "Search: " + f + "    Triangle: change (empty shows all)");
+}
+
 // The help line over the list: about the selected game when idle.
 void Scene_GameBrowser::ShowLibraryHelp() {
 	const auto* e = library_window->GetSelected();
@@ -392,6 +405,16 @@ void Scene_GameBrowser::UpdateLibraryStatus() {
 void Scene_GameBrowser::UpdateLibrary() {
 	using Ps5Library::State;
 
+	if (Input::IsRawKeyTriggered(Input::Keys::JOY_Y)) {
+		// Triangle: search by name with the system keyboard
+		std::string text = library_window->GetFilter();
+		if (Ps5::TextInput("Search the library", text)) {
+			library_window->SetFilter(text);
+			UpdateSearchText();
+		}
+		return;
+	}
+
 	if (Input::IsTriggered(Input::CANCEL)) {
 		if (library_downloading) {
 			Ps5Library::CancelDownload();
@@ -409,6 +432,11 @@ void Scene_GameBrowser::UpdateLibrary() {
 			return;
 		}
 		const auto* e = library_window->GetSelected();
+		if (e && e->url.empty()) {
+			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
+			help_window->SetText(e->name + " has no download link yet.");
+			return;
+		}
 		if (!e || library_downloading || Ps5Library::IsInstalled(*e)) {
 			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
 			return;

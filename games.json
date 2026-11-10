@@ -6,6 +6,9 @@
       "author": "Patchy Illusion Team (English translation)",
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-3",
+      "jp": "https://ftp.vector.co.jp/47/42/3135/taoru1.lzh",
+      "ru": "https://mega.nz/file/WgdmhBCY#uS-0ky6opN23e1QoToC8DXP0Tvm5Hip3Z5LZnhwz9z0",i
+      "ch": "https://storage-file-download-common.bowlroll.cloud/storage/eyJhbGciOiJIUzUxMiJ9.eyJwdWJsaWMiOmZhbHNlLCJleHAiOjE3OTQzMTcwMjIsImRpc3Bvc2l0aW9uIjoiQXR0YWNobWVudCIsInJldmlzaW9uIjoxLCJyZXNvdXJjZS1pZCI6IjEyOTA3MSIsImJ1Y2tldCI6ImZpbGUifQ.8OBTkGp3WH74tUwHnquY3vGslYLX33YIKAtAQQjhoz8vcSWVhnxXn8bkyjEDUPj6868yjJRzA6FIoJW4VXNScA",
       "upload": 18325577,
       "size": 17912300
     },
@@ -15,6 +18,8 @@
       "author": "Patchy Illusion Team (English translation)",
       "license": "Free on itch.io (R-15)",
       "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time-2",
+      "jp": "https://ftp.vector.co.jp/45/60/3135/taorukettomouitido2.lzh",
+      "ru": "https://mega.nz/file/S50TUKhT#PnvwuqQtll3XagbYk5F2YaDbqo6w4lUo_TnXT-5t_PE",
       "upload": 9984524,
       "size": 16926358
     },
@@ -24,6 +29,8 @@
       "author": "Patchy Illusion Team (English translation)",
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time",
+      "ru": "https://mega.nz/file/P9FCRBwK#I_VFmSWERW7YC0gk30PRBajOV2E9unp22Eoctj43YCQ",
+      "ch": "https://storage-file-download-common.bowlroll.cloud/storage/eyJhbGciOiJIUzUxMiJ9.eyJwdWJsaWMiOmZhbHNlLCJidWNrZXQiOiJmaWxlIiwicmVzb3VyY2UtaWQiOiIxMjkwNzEiLCJyZXZpc2lvbiI6MSwiZGlzcG9zaXRpb24iOiJBdHRhY2htZW50IiwiZXhwIjoxNzk0MzE4Mjc0fQ.pF-UO9IyK0pJ-7u9gy1bEDDhTWrIQpQvQR3lYm7QsKV5AG_N3IeqYZlnJ8QpuIN0kO1yGqVt1qHHGRy9rH18-Q",
       "upload": 17215616,
       "size": 23685629
     },
@@ -98,14 +105,6 @@
       "url": "https://patchy-illusion-team.itch.io/towelket-0",
       "upload": 9472074,
       "size": 13388363
-    },
-    {
-      "id": "end-roll",
-      "name": "End Roll",
-      "author": "vgperson",
-      "license": "Freeware, from the author's site",
-      "url": "https://vgperson.com/games/EndRoll201.zip",
-      "size": 108874932
     }
   ]
 }
