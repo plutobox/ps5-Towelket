@@ -99,7 +99,7 @@ libraries=("$pacbrew/lib/libSDL2_ttf.a" "$pacbrew/lib/libfreetype.a"
            "$pacbrew/lib/libvorbisenc.a" "$pacbrew/lib/libsndfile.a"
            "$pacbrew/lib/libFLAC.a" "$pacbrew/lib/libopus.a"
            "$pacbrew/lib/libogg.a" "$pacbrew/lib/libmp3lame.a" "$pacbrew/lib/libsamplerate.a"
-           "$pacbrew/lib/libcurl.a" "$pacbrew/lib/libpsl.a" "$pacbrew/lib/libssl.a" "$pacbrew/lib/libcrypto.a" "$pacbrew/lib/libzstd.a" "$pacbrew/lib/libiconv.a" "$pacbrew/lib/libpng16.a" "$pacbrew/lib/libz.a" "$platform"
+           "$pacbrew/lib/libarchive.a" "$pacbrew/lib/liblzma.a" "$pacbrew/lib/libcurl.a" "$pacbrew/lib/libpsl.a" "$pacbrew/lib/libssl.a" "$pacbrew/lib/libcrypto.a" "$pacbrew/lib/libzstd.a" "$pacbrew/lib/libiconv.a" "$pacbrew/lib/libpng16.a" "$pacbrew/lib/libz.a" "$platform"
            "$sdl2/lib/libSDL2.a" "$opengl/lib/libPS5OpenGLCore33.a"
            "$sdk/target/lib/libunwind.a" "$sdk/target/lib/libc++abi.a"
            "$sdk/target/lib/libc++.a" "$compiler_rt")
@@ -143,7 +143,7 @@ for function in "${bound[@]}"; do
     defsyms+=("--defsym=$function=ps5_$function")
 done
 # What neither the console nor the platform layer provides: native_shims.c.
-for function in lstat uselocale ___mb_cur_max pipe2 sendmmsg recvmmsg; do
+for function in lstat uselocale ___mb_cur_max pipe2 sendmmsg recvmmsg timegm; do
     if [[ " ${used[*]} " == *" $function "* ]]; then
         defsyms+=("--defsym=$function=easyrpg_ps5_$function")
     fi
@@ -152,7 +152,7 @@ echo "Bound to the platform layer: ${bound[*]}"
 
 # ui.cpp shows the Player's frame with OpenGL (the SDL has no render
 # subsystem); it keeps the title alive in place of exit().
-wraps=" --wrap=exit"
+wraps=" --wrap=exit --wrap=fcntl"
 
 # As in ps5-opengl's folder.py: a bounded heap, prebuilt dependencies, and
 # the app heap's allocator wrappers.

@@ -9,6 +9,9 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
+#include <errno.h>
+#include <stdarg.h>
 
 /* lstat() fails for a title. A title has no symbolic links, so stat()
  * answers the same. */
@@ -109,4 +112,48 @@ unsigned long long ZSTD_trace_decompress_begin(const void *dctx)
 void ZSTD_trace_decompress_end(unsigned long long ctx, const void *trace)
 {
     (void) ctx, (void) trace;
+}
+
+/* timegm(): a broken-down UTC time to seconds since 1970 (libarchive's date
+ * handling). Days from civil date, as in Howard Hinnant's algorithm. */
+time_t easyrpg_ps5_timegm(struct tm *tm)
+{
+    long long y = tm->tm_year + 1900LL;
+    long long m = tm->tm_mon + 1;
+    long long d = tm->tm_mday;
+    long long era, yoe, doy, doe, days;
+
+    /* normalise the month, which may be out of range */
+    y += (m - 1) / 12;
+    m = (m - 1) % 12 + 1;
+    if (m < 1) {
+        m += 12;
+        y--;
+    }
+    y -= m <= 2;
+    era = (y >= 0 ? y : y - 399) / 400;
+    yoe = y - era * 400;
+    doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+    doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    days = era * 146097 + doe - 719468;
+    return (time_t) (days * 86400 + tm->tm_hour * 3600LL + tm->tm_min * 60LL + tm->tm_sec);
+}
+
+/* The console's fcntl() refuses F_SETFD (close-on-exec) with EINVAL; curl
+ * treats that as a failed connection. A title never execs, so say it worked.
+ * Bound with --wrap=fcntl. */
+int __real_fcntl(int fd, int cmd, ...);
+int __wrap_fcntl(int fd, int cmd, ...)
+{
+    va_list ap;
+    long arg;
+    int result;
+
+    va_start(ap, cmd);
+    arg = va_arg(ap, long);
+    va_end(ap);
+    result = __real_fcntl(fd, cmd, arg);
+    if (result == -1 && cmd == F_SETFD && errno == EINVAL)
+        return 0;
+    return result;
 }

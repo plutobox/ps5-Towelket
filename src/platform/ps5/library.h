@@ -26,12 +26,15 @@
  * The game library: a catalog of freely redistributable RPG Maker games
  * (a JSON file fetched over HTTP(S)) and downloads of the games in it.
  *
- * A game is a ZIP archive, saved into the games folder, which the game
- * browser already plays as it is. Both the catalog and the downloads run on
- * a worker thread; the scene polls the state each frame.
+ * A game's "url" is a direct link to a ZIP, a Google Drive share link, or
+ * the game's itch.io page (free games only). A ZIP is saved into the games
+ * folder, which the game browser plays as it is; any other archive (7z, RAR,
+ * LZH, ...) is unpacked into a folder of the game's id. Both the catalog and
+ * the downloads run on a worker thread; the scene polls the state each frame.
  *
  * The catalog is {"games": [{"id", "name", "author", "license", "url",
- * "size"}, ...]}; "size" (bytes) is optional.
+ * "size", "upload"}, ...]}; "size" (bytes) and "upload" (an itch.io file id)
+ * are optional.
  */
 namespace Ps5Library {
 
@@ -42,6 +45,7 @@ struct Entry {
 	std::string license;
 	std::string url;
 	int64_t size = 0;
+	int64_t upload = 0;   // itch.io: which of the page's files to take (0: the first)
 };
 
 enum class State { Idle, Working, Done, Failed };
@@ -51,6 +55,7 @@ struct Status {
 	int64_t done = 0;     // bytes (downloads)
 	int64_t total = 0;    // bytes, 0 when unknown
 	std::string error;    // when Failed
+	bool unpacking = false; // downloaded; now being unpacked
 };
 
 /** Where the catalog is fetched from; overridable (see library.cpp). */

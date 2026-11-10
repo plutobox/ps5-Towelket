@@ -350,7 +350,9 @@ void Scene_GameBrowser::UpdateLibraryStatus() {
 	switch (status.state) {
 		case State::Working: {
 			std::string text = "Downloading " + library_download_name;
-			if (status.total > 0) {
+			if (status.unpacking) {
+				text = "Unpacking " + library_download_name + "...";
+			} else if (status.total > 0) {
 				text += ": " + std::to_string(static_cast<int>(status.done * 100 / status.total)) + "% ("
 					+ Mb(status.done) + " / " + Mb(status.total) + " MB)";
 			} else {
