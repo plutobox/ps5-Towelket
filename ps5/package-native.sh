@@ -129,7 +129,7 @@ mapfile -t used < <(llvm-nm-18 "${objects[@]}" "${libraries[@]}" 2>/dev/null |
     awk 'NF == 2 && ($1 == "U" || $1 == "w") { print $2 }' | sort -u)
 mapfile -t bound < <(comm -12 <(printf '%s\n' "${provided[@]}") \
     <(printf '%s\n' "${used[@]}") |
-    grep -v -x -E 'malloc|calloc|realloc|free|posix_memalign|aligned_alloc|malloc_usable_size|memalign|sysconf|pthread_exit')
+    grep -v -x -E 'malloc|calloc|realloc|free|posix_memalign|aligned_alloc|malloc_usable_size|memalign|sysconf|pthread_exit|getaddrinfo|freeaddrinfo')
 # Not sysconf or pthread_exit: ps5_sysconf and ps5_pthread_exit call the
 # originals, which a binding would turn into calls to themselves.
 # mkstemp is imported although no input's symbol table names it; bind it
@@ -143,7 +143,7 @@ for function in "${bound[@]}"; do
     defsyms+=("--defsym=$function=ps5_$function")
 done
 # What neither the console nor the platform layer provides: native_shims.c.
-for function in lstat uselocale ___mb_cur_max pipe2 sendmmsg recvmmsg timegm; do
+for function in lstat uselocale ___mb_cur_max pipe2 sendmmsg recvmmsg timegm getaddrinfo freeaddrinfo; do
     if [[ " ${used[*]} " == *" $function "* ]]; then
         defsyms+=("--defsym=$function=easyrpg_ps5_$function")
     fi

@@ -40,6 +40,10 @@ public:
 	/** Redraws the list (after a game was installed). */
 	void Refresh();
 
+	/** Marks the game being downloaded (by id) with a short status shown on its
+	 *  row, such as "42%" or "Unpacking"; an empty id clears the mark. */
+	void SetBusy(const std::string& id, const std::string& status);
+
 	bool HasEntries() const { return !entries.empty(); }
 	/** The selected game, or null if none. */
 	const Ps5Library::Entry* GetSelected() const;
@@ -48,6 +52,8 @@ public:
 
 private:
 	std::vector<Ps5Library::Entry> entries;
+	std::string busy_id;
+	std::string busy_status;
 };
 
 #endif

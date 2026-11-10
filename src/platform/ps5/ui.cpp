@@ -669,6 +669,52 @@ bool Ps5Ui::vChangeDisplaySurfaceResolution(int new_width, int new_height) {
 	return true;
 }
 
+namespace {
+// Test hook: keys typed into /data/easyrpg-input.txt are pressed one after
+// another (x Cross, o Circle, s Square, t Triangle, u d l r d-pad, p Options).
+// Checked every 20 frames; the file is deleted once read.
+std::string injected;
+int inject_phase = 0;
+int inject_frame = 0;
+int injected_key = -1;
+
+void PollInjected() {
+	if (injected.empty() && ++inject_frame % 20 == 0) {
+		if (FILE* f = std::fopen("/data/easyrpg-input.txt", "rb")) {
+			char buf[256];
+			size_t n = std::fread(buf, 1, sizeof(buf), f);
+			std::fclose(f);
+			std::remove("/data/easyrpg-input.txt");
+			injected.assign(buf, n);
+		}
+	}
+	injected_key = -1;
+	if (injected.empty()) {
+		return;
+	}
+	// 5 frames down, 5 frames up per key
+	int step = inject_phase++ % 10;
+	char c = injected[0];
+	if (step < 5) {
+		switch (c) {
+			case 'x': injected_key = Input::Keys::JOY_A; break;
+			case 'o': injected_key = Input::Keys::JOY_B; break;
+			case 's': injected_key = Input::Keys::JOY_X; break;
+			case 't': injected_key = Input::Keys::JOY_Y; break;
+			case 'u': injected_key = Input::Keys::JOY_DPAD_UP; break;
+			case 'd': injected_key = Input::Keys::JOY_DPAD_DOWN; break;
+			case 'l': injected_key = Input::Keys::JOY_DPAD_LEFT; break;
+			case 'r': injected_key = Input::Keys::JOY_DPAD_RIGHT; break;
+			case 'p': injected_key = Input::Keys::JOY_START; break;
+			default: break;
+		}
+	}
+	if (step == 9) {
+		injected.erase(0, 1);
+	}
+}
+}
+
 bool Ps5Ui::ProcessEvents() {
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
@@ -684,7 +730,12 @@ bool Ps5Ui::ProcessEvents() {
 		}
 	}
 
+	PollInjected();
+
 	if (!joystick) {
+		if (injected_key >= 0) {
+			keys[injected_key] = true;
+		}
 		return true;
 	}
 
@@ -704,6 +755,9 @@ bool Ps5Ui::ProcessEvents() {
 	keys[Input::Keys::JOY_BACK] = down(B_CREATE);
 	keys[Input::Keys::JOY_START] = down(B_OPTIONS);
 	keys[Input::Keys::JOY_TOUCH] = down(B_TOUCHPAD);
+	if (injected_key >= 0) {
+		keys[injected_key] = true;
+	}
 
 	analog_input.primary.x = Normalize(SDL_JoystickGetAxis(joystick, 0));
 	analog_input.primary.y = Normalize(SDL_JoystickGetAxis(joystick, 1));

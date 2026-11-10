@@ -71,6 +71,17 @@ void Window_Library::SetMessage(const std::string& message, bool error) {
 	contents->TextDraw(0, 0, error ? Font::ColorKnockout : Font::ColorDefault, message);
 }
 
+void Window_Library::SetBusy(const std::string& id, const std::string& status) {
+	if (id == busy_id && status == busy_status) {
+		return;
+	}
+	busy_id = id;
+	busy_status = status;
+	if (!entries.empty()) {
+		Refresh();
+	}
+}
+
 const Ps5Library::Entry* Window_Library::GetSelected() const {
 	int i = GetIndex();
 	if (i < 0 || i >= static_cast<int>(entries.size())) {
@@ -85,6 +96,13 @@ void Window_Library::DrawItem(int index) {
 
 	const auto& e = entries[index];
 	const bool installed = Ps5Library::IsInstalled(e);
+
+	if (!busy_id.empty() && e.id == busy_id) {
+		// being downloaded: the name in green, the progress where the size is
+		contents->TextDraw(rect.x, rect.y, Font::ColorHeal, e.name);
+		contents->TextDraw(rect.width, rect.y, Font::ColorHeal, busy_status, Text::AlignRight);
+		return;
+	}
 
 	contents->TextDraw(rect.x, rect.y, installed ? Font::ColorDisabled : Font::ColorDefault, e.name);
 	std::string status = installed ? "Installed" : (e.size > 0 ? Megabytes(e.size) : "");

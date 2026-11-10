@@ -61,6 +61,26 @@ bool EnsureCurl() {
 	return ok;
 }
 
+int DebugCallback(CURL*, curl_infotype type, char* data, size_t size, void*);
+
+/* The write callback for a download. Not fwrite itself: a libc function's
+ * address is not usable until it has been called once (the console binds an
+ * import at its first call), and curl calls through the pointer. */
+size_t FileWriteCallback(char* data, size_t size, size_t count, void* file) {
+	return std::fwrite(data, size, count, static_cast<std::FILE*>(file));
+}
+
+/* Frees a curl handle on a thread of its own. On the console closing a TLS
+ * connection can block (seen after a finished transfer), and a request that
+ * is done must not wait on that: the worker goes on, and the side thread ends
+ * whenever the close does. */
+void ReleaseCurl(CURL* curl) {
+	std::thread([curl] {
+		curl_easy_cleanup(curl);
+		Output::Debug("Library: curl handle released");
+	}).detach();
+}
+
 void SetCommonOptions(CURL* curl, const std::string& url) {
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -71,10 +91,12 @@ void SetCommonOptions(CURL* curl, const std::string& url) {
 	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024L);
 	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
 	curl_easy_setopt(curl, CURLOPT_CAINFO, kCaBundle);
-	curl_easy_setopt(curl, CURLOPT_USERAGENT, "EasyRPG-Player-PS5");
+	curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (PlayStation 5) EasyRPG-Player");
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 	// A title has no ~/.curlrc or proxy variables, and no c-ares.
 	curl_easy_setopt(curl, CURLOPT_NOPROXY, "*");
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, DebugCallback);
 }
 
 /* A game's address as the catalog gives it, turned into one curl can fetch.
@@ -106,242 +128,6 @@ std::string ResolveUrl(const std::string& url) {
 
 bool IsDriveUrl(const std::string& url) {
 	return url.find("drive.google.com") != std::string::npos || url.find("docs.google.com") != std::string::npos;
-}
-
-size_t CollectCallback(char* data, size_t size, size_t count, void* user);
-
-bool IsItchUrl(const std::string& url) {
-	return url.find(".itch.io/") != std::string::npos;
-}
-
-/* ---- itch.io --------------------------------------------------------------
- * A free game's page hands out files without an account, as the site's own
- * "download" button does: a page load (session cookie and CSRF token), a POST
- * for the download page, and a POST for the chosen file, which answers with a
- * signed address on itch's storage that works for a minute. */
-
-std::string Collect(CURL* curl, const std::string& url, const std::string* post, std::string& error) {
-	std::string body;
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CollectCallback);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
-	if (post) {
-		curl_easy_setopt(curl, CURLOPT_POST, 1L);
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post->c_str());
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(post->size()));
-	} else {
-		curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
-	}
-	CURLcode code = curl_easy_perform(curl);
-	if (code != CURLE_OK) {
-		error = std::string("itch.io: ") + curl_easy_strerror(code);
-		return {};
-	}
-	return body;
-}
-
-std::string UrlEncode(CURL* curl, const std::string& s) {
-	char* e = curl_easy_escape(curl, s.c_str(), static_cast<int>(s.size()));
-	std::string out = e ? e : "";
-	if (e) curl_free(e);
-	return out;
-}
-
-std::string FindCsrf(const std::string& html) {
-	const std::string marker = "name=\"csrf_token\" value=\"";
-	size_t at = html.find(marker);
-	if (at == std::string::npos) return {};
-	at += marker.size();
-	return html.substr(at, html.find('"', at) - at);
-}
-
-// The first "url" in a JSON reply, unescaped (\/ -> /).
-std::string JsonUrl(const std::string& json) {
-	const std::string marker = "\"url\":\"";
-	size_t at = json.find(marker);
-	if (at == std::string::npos) return {};
-	std::string out;
-	for (size_t i = at + marker.size(); i < json.size() && json[i] != '"'; ++i) {
-		if (json[i] == '\\' && i + 1 < json.size()) {
-			++i;
-			if (json[i] == 'u' && i + 4 < json.size()) { // & and friends
-				out += static_cast<char>(std::strtol(json.substr(i + 1, 4).c_str(), nullptr, 16));
-				i += 4;
-				continue;
-			}
-		}
-		out += json[i];
-	}
-	return out;
-}
-
-bool ResolveItch(const Entry& entry, std::string& direct, std::string& error) {
-	CURL* curl = curl_easy_init();
-	if (!curl) {
-		error = "Networking could not start";
-		return false;
-	}
-	char detail[CURL_ERROR_SIZE] = "";
-	SetCommonOptions(curl, entry.url);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 40L);
-	curl_easy_setopt(curl, CURLOPT_COOKIEFILE, ""); // keep cookies in memory
-	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, detail);
-	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L); // itch answers errors in JSON
-
-	std::string base = entry.url.substr(0, entry.url.find('?'));
-	while (!base.empty() && base.back() == '/') base.pop_back();
-
-	bool ok = false;
-	do {
-		std::string page = Collect(curl, base, nullptr, error);
-		if (page.empty()) { if (error.empty()) error = "itch.io: the game's page is empty"; break; }
-		std::string csrf = FindCsrf(page);
-		if (csrf.empty()) { error = "itch.io: no session token on the page"; break; }
-
-		std::string form = "csrf_token=" + UrlEncode(curl, csrf);
-		std::string reply = Collect(curl, base + "/download_url", &form, error);
-		std::string download_page = JsonUrl(reply);
-		if (download_page.empty()) { if (error.empty()) error = "itch.io: this game cannot be downloaded without an account"; break; }
-
-		page = Collect(curl, download_page, nullptr, error);
-		if (page.empty()) { if (error.empty()) error = "itch.io: the download page is empty"; break; }
-		std::string csrf2 = FindCsrf(page);
-		if (!csrf2.empty()) form = "csrf_token=" + UrlEncode(curl, csrf2);
-
-		int64_t upload = entry.upload;
-		if (!upload) {
-			const std::string marker = "data-upload_id=\"";
-			size_t at = page.find(marker);
-			if (at == std::string::npos) { error = "itch.io: the page offers no files"; break; }
-			upload = std::strtoll(page.c_str() + at + marker.size(), nullptr, 10);
-		}
-
-		reply = Collect(curl, base + "/file/" + std::to_string(upload)
-			+ "?source=game_download&as_props=1&after_download_lightbox=true", &form, error);
-		if (reply.find("\"external\":true") != std::string::npos) {
-			error = "itch.io: that file is a link to another site";
-			break;
-		}
-		direct = JsonUrl(reply);
-		if (direct.empty()) { if (error.empty()) error = "itch.io: no download address was given"; break; }
-		ok = true;
-	} while (false);
-	curl_easy_cleanup(curl);
-	return ok;
-}
-
-/* ---- Archives other than ZIP ------------------------------------------------
- * libarchive reads 7z, RAR, LZH and more. A game is unpacked into a folder
- * (which the browser plays as it is); paths that would leave it are skipped. */
-
-bool MakeDirs(const std::string& path) {
-	for (size_t i = 1; i <= path.size(); ++i) {
-		if (i == path.size() || path[i] == '/') {
-			std::string part = path.substr(0, i);
-			if (mkdir(part.c_str(), 0755) != 0 && errno != EEXIST) {
-				return false;
-			}
-		}
-	}
-	return true;
-}
-
-std::string SafeRelative(const char* name) {
-	std::string out;
-	std::string part;
-	std::string path = name ? name : "";
-	for (char& c : path) if (c == '\\') c = '/';
-	path += '/';
-	for (char c : path) {
-		if (c != '/') { part += c; continue; }
-		if (part.empty() || part == ".") { part.clear(); continue; }
-		if (part == "..") return {};
-		if (!out.empty()) out += '/';
-		out += part;
-		part.clear();
-	}
-	return out;
-}
-
-bool Unpack(const std::string& file, const std::string& dir, std::string& error) {
-	struct archive* in = archive_read_new();
-	archive_read_support_filter_all(in);
-	archive_read_support_format_all(in);
-	if (archive_read_open_filename(in, file.c_str(), 64 * 1024) != ARCHIVE_OK) {
-		error = std::string("Cannot open the archive: ") + archive_error_string(in);
-		archive_read_free(in);
-		return false;
-	}
-	if (!MakeDirs(dir)) {
-		error = "Cannot create " + dir;
-		archive_read_free(in);
-		return false;
-	}
-
-	std::vector<char> buffer(256 * 1024);
-	struct archive_entry* entry;
-	int files = 0;
-	bool ok = true;
-	int r;
-	while ((r = archive_read_next_header(in, &entry)) == ARCHIVE_OK || r == ARCHIVE_WARN) {
-		std::string rel = SafeRelative(archive_entry_pathname(entry));
-		if (rel.empty()) continue;
-		std::string target = dir + "/" + rel;
-		const auto type = archive_entry_filetype(entry);
-		if (type == AE_IFDIR) {
-			MakeDirs(target);
-			continue;
-		}
-		if (type != AE_IFREG) continue; // no links or devices
-		MakeDirs(target.substr(0, target.rfind('/')));
-		std::FILE* out = std::fopen(target.c_str(), "wb");
-		if (!out) {
-			error = "Cannot write " + rel;
-			ok = false;
-			break;
-		}
-		ssize_t n;
-		while ((n = archive_read_data(in, buffer.data(), buffer.size())) > 0) {
-			if (std::fwrite(buffer.data(), 1, static_cast<size_t>(n), out) != static_cast<size_t>(n)) {
-				error = "Could not save " + rel + " (disk full?)";
-				ok = false;
-				break;
-			}
-		}
-		if (n < 0 && ok) {
-			error = std::string("Damaged archive: ") + archive_error_string(in);
-			ok = false;
-		}
-		std::fclose(out);
-		if (!ok) break;
-		++files;
-	}
-	if (ok && r != ARCHIVE_EOF) {
-		error = std::string("Damaged archive: ") + archive_error_string(in);
-		ok = false;
-	}
-	if (ok && files == 0) {
-		error = "The archive is empty";
-		ok = false;
-	}
-	archive_read_free(in);
-	return ok;
-}
-
-// Removes a folder and what is in it (the half-unpacked game after a failure).
-void RemoveTree(const std::string& dir) {
-	if (DIR* d = opendir(dir.c_str())) {
-		while (struct dirent* e = readdir(d)) {
-			std::string name = e->d_name;
-			if (name == "." || name == "..") continue;
-			std::string path = dir + "/" + name;
-			struct stat st;
-			if (stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) RemoveTree(path);
-			else std::remove(path.c_str());
-		}
-		closedir(d);
-	}
-	rmdir(dir.c_str());
 }
 
 std::string Describe(CURLcode code, const char* detail) {
@@ -545,6 +331,273 @@ bool ReadEntry(Json& j, Entry& e) {
 	}
 }
 
+size_t CollectCallback(char* data, size_t size, size_t count, void* user);
+
+bool IsItchUrl(const std::string& url) {
+	return url.find(".itch.io/") != std::string::npos;
+}
+
+/* ---- itch.io --------------------------------------------------------------
+ * A free game's page hands out files without an account, as the site's own
+ * "download" button does: a page load (session cookie and CSRF token), a POST
+ * for the download page, and a POST for the chosen file, which answers with a
+ * signed address on itch's storage that works for a minute. */
+
+std::string Collect(CURL* curl, const std::string& url, const std::string* post, std::string& error) {
+	std::string body;
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CollectCallback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
+	if (post) {
+		curl_easy_setopt(curl, CURLOPT_POST, 1L);
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post->c_str());
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(post->size()));
+	} else {
+		curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+	}
+	CURLcode code = curl_easy_perform(curl);
+	if (code != CURLE_OK) {
+		error = std::string("itch.io: ") + curl_easy_strerror(code);
+		return {};
+	}
+	return body;
+}
+
+std::string UrlEncode(CURL* curl, const std::string& s) {
+	char* e = curl_easy_escape(curl, s.c_str(), static_cast<int>(s.size()));
+	std::string out = e ? e : "";
+	if (e) curl_free(e);
+	return out;
+}
+
+std::string FindCsrf(const std::string& html) {
+	const std::string marker = "csrf_token\" value=\"";
+	size_t at = html.find(marker);
+	if (at == std::string::npos) return {};
+	at += marker.size();
+	return html.substr(at, html.find('"', at) - at);
+}
+
+// A top-level string member of a JSON object, or "" (itch lists its members in
+// a different order from one reply to the next, with other "url"s nested in them).
+std::string JsonTopString(const std::string& text, const char* wanted) {
+	Json j(text);
+	if (!j.Expect('{')) return {};
+	j.Ws();
+	if (j.i < text.size() && text[j.i] == '}') return {};
+	while (true) {
+		std::string key;
+		if (!j.String(key) || !j.Expect(':')) return {};
+		j.Ws();
+		if (key == wanted && j.i < text.size() && text[j.i] == '"') {
+			std::string value;
+			return j.String(value) ? value : std::string();
+		}
+		if (!j.Skip()) return {};
+		j.Ws();
+		if (j.i < text.size() && text[j.i] == ',') { ++j.i; continue; }
+		return {};
+	}
+}
+
+// True if a top-level member is the literal true.
+bool JsonTopTrue(const std::string& text, const char* wanted) {
+	Json j(text);
+	if (!j.Expect('{')) return false;
+	j.Ws();
+	if (j.i < text.size() && text[j.i] == '}') return false;
+	while (true) {
+		std::string key;
+		if (!j.String(key) || !j.Expect(':')) return false;
+		j.Ws();
+		if (key == wanted) return text.compare(j.i, 4, "true") == 0;
+		if (!j.Skip()) return false;
+		j.Ws();
+		if (j.i < text.size() && text[j.i] == ',') { ++j.i; continue; }
+		return false;
+	}
+}
+
+bool ResolveItch(const Entry& entry, std::string& direct, std::string& error) {
+	CURL* curl = curl_easy_init();
+	if (!curl) {
+		error = "Networking could not start";
+		return false;
+	}
+	char detail[CURL_ERROR_SIZE] = "";
+	SetCommonOptions(curl, entry.url);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 40L);
+	curl_easy_setopt(curl, CURLOPT_COOKIEFILE, ""); // keep cookies in memory
+	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, detail);
+	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L); // itch answers errors in JSON
+
+	std::string base = entry.url.substr(0, entry.url.find('?'));
+	while (!base.empty() && base.back() == '/') base.pop_back();
+
+	bool ok = false;
+	do {
+		std::string page = Collect(curl, base, nullptr, error);
+		if (page.empty()) { if (error.empty()) error = "itch.io: the game's page is empty"; break; }
+		std::string csrf = FindCsrf(page);
+		if (csrf.empty()) { error = "itch.io: no session token on the page"; break; }
+
+		std::string form = "csrf_token=" + UrlEncode(curl, csrf);
+		std::string reply = Collect(curl, base + "/download_url", &form, error);
+		std::string download_page = JsonTopString(reply, "url");
+		if (download_page.empty()) { if (error.empty()) error = "itch.io: this game cannot be downloaded without an account"; break; }
+
+		page = Collect(curl, download_page, nullptr, error);
+		if (page.empty()) { if (error.empty()) error = "itch.io: the download page is empty"; break; }
+		std::string csrf2 = FindCsrf(page);
+		if (!csrf2.empty()) form = "csrf_token=" + UrlEncode(curl, csrf2);
+
+		int64_t upload = entry.upload;
+		if (!upload) {
+			const std::string marker = "data-upload_id=\"";
+			size_t at = page.find(marker);
+			if (at == std::string::npos) { error = "itch.io: the page offers no files"; break; }
+			upload = std::strtoll(page.c_str() + at + marker.size(), nullptr, 10);
+		}
+
+		reply = Collect(curl, base + "/file/" + std::to_string(upload)
+			+ "?source=game_download&as_props=1&after_download_lightbox=true", &form, error);
+		if (JsonTopTrue(reply, "external")) {
+			error = "itch.io: that file is a link to another site";
+			break;
+		}
+		direct = JsonTopString(reply, "url");
+		if (direct.empty()) { if (error.empty()) error = "itch.io: no download address was given"; break; }
+		ok = true;
+	} while (false);
+	ReleaseCurl(curl);
+	return ok;
+}
+
+/* ---- Archives other than ZIP ------------------------------------------------
+ * libarchive reads 7z, RAR, LZH and more. A game is unpacked into a folder
+ * (which the browser plays as it is); paths that would leave it are skipped. */
+
+bool MakeDirs(const std::string& path) {
+	for (size_t i = 1; i <= path.size(); ++i) {
+		if (i == path.size() || path[i] == '/') {
+			std::string part = path.substr(0, i);
+			if (mkdir(part.c_str(), 0755) != 0 && errno != EEXIST) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+std::string SafeRelative(const char* name) {
+	std::string out;
+	std::string part;
+	std::string path = name ? name : "";
+	for (char& c : path) if (c == '\\') c = '/';
+	path += '/';
+	for (char c : path) {
+		if (c != '/') { part += c; continue; }
+		if (part.empty() || part == ".") { part.clear(); continue; }
+		if (part == "..") return {};
+		if (!out.empty()) out += '/';
+		out += part;
+		part.clear();
+	}
+	return out;
+}
+
+bool Unpack(const std::string& file, const std::string& dir, std::string& error) {
+	struct archive* in = archive_read_new();
+	archive_read_support_filter_all(in);
+	archive_read_support_format_all(in);
+	if (archive_read_open_filename(in, file.c_str(), 64 * 1024) != ARCHIVE_OK) {
+		error = std::string("Cannot open the archive: ") + archive_error_string(in);
+		archive_read_free(in);
+		return false;
+	}
+	if (!MakeDirs(dir)) {
+		error = "Cannot create " + dir;
+		archive_read_free(in);
+		return false;
+	}
+
+	std::vector<char> buffer(256 * 1024);
+	struct archive_entry* entry;
+	int files = 0;
+	bool ok = true;
+	int r;
+	while ((r = archive_read_next_header(in, &entry)) == ARCHIVE_OK || r == ARCHIVE_WARN) {
+		std::string rel = SafeRelative(archive_entry_pathname(entry));
+		if (rel.empty()) continue;
+		std::string target = dir + "/" + rel;
+		const auto type = archive_entry_filetype(entry);
+		if (type == AE_IFDIR) {
+			MakeDirs(target);
+			continue;
+		}
+		if (type != AE_IFREG) continue; // no links or devices
+		MakeDirs(target.substr(0, target.rfind('/')));
+		std::FILE* out = std::fopen(target.c_str(), "wb");
+		if (!out) {
+			error = "Cannot write " + rel;
+			ok = false;
+			break;
+		}
+		ssize_t n;
+		while ((n = archive_read_data(in, buffer.data(), buffer.size())) > 0) {
+			if (std::fwrite(buffer.data(), 1, static_cast<size_t>(n), out) != static_cast<size_t>(n)) {
+				error = "Could not save " + rel + " (disk full?)";
+				ok = false;
+				break;
+			}
+		}
+		if (n < 0 && ok) {
+			error = std::string("Damaged archive: ") + archive_error_string(in);
+			ok = false;
+		}
+		std::fclose(out);
+		if (!ok) break;
+		++files;
+	}
+	if (ok && r != ARCHIVE_EOF) {
+		error = std::string("Damaged archive: ") + archive_error_string(in);
+		ok = false;
+	}
+	if (ok && files == 0) {
+		error = "The archive is empty";
+		ok = false;
+	}
+	archive_read_free(in);
+	return ok;
+}
+
+// Removes a folder and what is in it (the half-unpacked game after a failure).
+void RemoveTree(const std::string& dir) {
+	if (DIR* d = opendir(dir.c_str())) {
+		while (struct dirent* e = readdir(d)) {
+			std::string name = e->d_name;
+			if (name == "." || name == "..") continue;
+			std::string path = dir + "/" + name;
+			struct stat st;
+			if (stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) RemoveTree(path);
+			else std::remove(path.c_str());
+		}
+		closedir(d);
+	}
+	rmdir(dir.c_str());
+}
+
+// curl's own account of what it is doing (resolving, connecting, TLS), kept in
+// the log: a stuck or failed download is otherwise a silent "loading".
+int DebugCallback(CURL*, curl_infotype type, char* data, size_t size, void*) {
+	if (type == CURLINFO_TEXT) {
+		std::string line(data, size);
+		while (!line.empty() && (line.back() == 10 || line.back() == 13)) line.pop_back();
+		Output::Debug("curl: {}", line);
+	}
+	return 0;
+}
+
 /* ---- Worker threads ----------------------------------------------------- */
 
 size_t CollectCallback(char* data, size_t size, size_t count, void* user) {
@@ -587,11 +640,14 @@ void CatalogWorker() {
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
 		curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, detail);
 		CURLcode code = curl_easy_perform(curl);
-		curl_easy_cleanup(curl);
+		Output::Debug("Library: catalog request done ({}), {} bytes", static_cast<int>(code), body.size());
+		ReleaseCurl(curl);
+		Output::Debug("Library: catalog connection closed");
 		if (code != CURLE_OK) {
 			error = Describe(code, detail);
 		} else {
 			ok = ParseCatalog(body, entries, error);
+			Output::Debug("Library: catalog parsed ({}), {} games", ok ? "ok" : "failed", entries.size());
 		}
 	} else {
 		error = "Networking could not start";
@@ -621,6 +677,7 @@ int ProgressCallback(void*, curl_off_t total, curl_off_t now, curl_off_t, curl_o
 }
 
 void DownloadWorker(Entry entry) {
+	Output::Debug("Library: download of {} started ({})", entry.id, entry.url);
 	const std::string base = std::string(kGamesDir) + "/" + entry.id;
 	const std::string part = base + ".download";
 	std::string error;
@@ -646,13 +703,13 @@ void DownloadWorker(Entry entry) {
 			std::fclose(file);
 		} else {
 			SetCommonOptions(curl, url);
-			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, FileWriteCallback);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
 			curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, detail);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallback);
 			CURLcode code = curl_easy_perform(curl);
-			curl_easy_cleanup(curl);
+			ReleaseCurl(curl);
 			const bool flushed = std::fflush(file) == 0;
 			std::fclose(file);
 

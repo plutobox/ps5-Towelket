@@ -1,27 +1,111 @@
 {
   "games": [
     {
+      "id": "towelket-3",
+      "name": "Towelket One More Time 3",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/towelket-3",
+      "upload": 18325577,
+      "size": 17912300
+    },
+    {
+      "id": "towelket-one-more-time-2",
+      "name": "Towelket One more time 2: Karaage Tanpopo",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io (R-15)",
+      "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time-2",
+      "upload": 9984524,
+      "size": 16926358
+    },
+    {
+      "id": "towelket-one-more-time",
+      "name": "Towelket One More Time",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time",
+      "upload": 17215616,
+      "size": 23685629
+    },
+    {
+      "id": "towelket-6",
+      "name": "Towelket One More Time 6 / Reverse",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/towelket-6",
+      "upload": 18850489,
+      "size": 26412681
+    },
+    {
+      "id": "towelket-4",
+      "name": "Towelket One More Time 4 ~Ocean~",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/towelket-4",
+      "upload": 18850624,
+      "size": 30556345
+    },
+    {
+      "id": "towelket-fury",
+      "name": "Towelket One More Time 5 ~Fury~",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/towelket-fury",
+      "upload": 18851006,
+      "size": 26233484
+    },
+    {
+      "id": "towelket-one-more-time-5-gaugaus-bride",
+      "name": "Towelket One More Time 5: Gaugau's Bride",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time-5-gaugaus-bride",
+      "upload": 8519221,
+      "size": 33055117
+    },
+    {
+      "id": "wonder-girl-nekoashi-otome",
+      "name": "Wonder Girl! Nekoashi Otome",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/wonder-girl-nekoashi-otome",
+      "upload": 8643675,
+      "size": 28370173
+    },
+    {
+      "id": "laughing-warawau",
+      "name": "Laughing Warawau",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/laughing-warawau",
+      "upload": 11127522,
+      "size": 279502133
+    },
+    {
+      "id": "fishing-for-the-moon-by-the-night-sea",
+      "name": "Fishing for the Moon by the Night Sea",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/fishing-for-the-moon-by-the-night-sea",
+      "upload": 11628854,
+      "size": 53225365
+    },
+    {
+      "id": "towelket-0",
+      "name": "Towelket 0 - Maiden Bomb Invaders",
+      "author": "Patchy Illusion Team (English translation)",
+      "license": "Free on itch.io",
+      "url": "https://patchy-illusion-team.itch.io/towelket-0",
+      "upload": 9472074,
+      "size": 13388363
+    },
+    {
       "id": "end-roll",
       "name": "End Roll",
       "author": "vgperson",
       "license": "Freeware, from the author's site",
       "url": "https://vgperson.com/games/EndRoll201.zip",
       "size": 108874932
-    },
-    {
-      "id": "towelket-one-more-time-3",
-      "name": "Towelket One More Time 3",
-      "author": "oobayasi",
-      "license": "Freeware (RPG)",
-      "url": "https://drive.google.com/file/d/1HquyP5ya7OObq9aDmm-CdzUCXARNRsR3/view",
-      "size": 17912300
-    },
-    {
-      "id": "towelket-one-more-time-2",
-      "name": "Towelket One More Time 2",
-      "author": "Kanao - English by Patchy Illusion Team",
-      "license": "Free on itch.io (R-15)",
-      "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time-2"
     }
   ]
 }

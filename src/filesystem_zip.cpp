@@ -143,8 +143,12 @@ ZipFilesystem::ZipFilesystem(std::string base_path, FilesystemView parent_fs, st
 		} else {
 			// also store CP437 to ensure files inside 7zip zip archives are found
 			filepath_cp437 = filepath;
-			cp437_encoder.Encode(filepath_cp437);
-			detected_encoder.Encode(filepath);
+			if (cp437_encoder.IsOk()) {
+				cp437_encoder.Encode(filepath_cp437);
+			}
+			if (detected_encoder.IsOk()) {
+				detected_encoder.Encode(filepath);
+			}
 		}
 
 		// Workaround ZIP archives containing invalid "\" paths created by .net or Powershell

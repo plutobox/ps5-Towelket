@@ -192,6 +192,8 @@ void Scene_GameBrowser::UpdateCommand() {
 			case Library:
 				command_window->SetActive(false);
 				command_window->SetIndex(-1);
+				gamelist_window->SetActive(false);
+				gamelist_window->SetIndex(-1);
 				library_window->SetActive(true);
 				library_window->SetIndex(library_window->HasEntries() ? 0 : -1);
 				break;
@@ -359,10 +361,16 @@ void Scene_GameBrowser::UpdateLibraryStatus() {
 				text += ": " + Mb(status.done) + " MB";
 			}
 			help_window->SetText(text);
+			// and on the game's own row in the list
+			library_window->SetBusy(Ps5Library::DownloadId(),
+				status.unpacking ? "Unpacking"
+				: status.total > 0 ? std::to_string(static_cast<int>(status.done * 100 / status.total)) + "%"
+				: Mb(status.done) + " MB");
 			break;
 		}
 		case State::Done:
 			library_downloading = false;
+			library_window->SetBusy("", "");
 			library_window->Refresh();
 			// The new archive is not in the cached directory listing yet.
 			stack.back().filesystem.ClearCache();
@@ -372,6 +380,7 @@ void Scene_GameBrowser::UpdateLibraryStatus() {
 			break;
 		case State::Failed:
 			library_downloading = false;
+			library_window->SetBusy("", "");
 			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
 			help_window->SetText("Download failed: " + status.error, Font::ColorKnockout);
 			break;

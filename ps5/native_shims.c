@@ -11,6 +11,11 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <stdarg.h>
 
 /* lstat() fails for a title. A title has no symbolic links, so stat()
@@ -156,4 +161,85 @@ int __wrap_fcntl(int fd, int cmd, ...)
     if (result == -1 && cmd == F_SETFD && errno == EINVAL)
         return 0;
     return result;
+}
+
+/* Name resolution. The platform layer's getaddrinfo() is a stub that always
+ * fails, so curl could never look up a host. The console resolves names with
+ * its own sceNetResolver API; this getaddrinfo() answers IPv4 lookups with it
+ * (one stream-socket result, which is all curl asks for) and takes dotted
+ * addresses as they are. Bound with --defsym, with freeaddrinfo() to free it. */
+int sceNetInit(void);
+int sceNetPoolCreate(const char *name, int size, int flags);
+int sceNetResolverCreate(const char *name, int memid, int flags);
+int sceNetResolverStartNtoa(int rid, const char *hostname, struct in_addr *addr,
+                            int timeout, int retry, int flags);
+int sceNetResolverDestroy(int rid);
+
+static int resolve_ipv4(const char *host, struct in_addr *out)
+{
+    static int pool = -2;
+    int rid, rc;
+
+    if (inet_aton(host, out))
+        return 0;
+    if (pool == -2) {
+        sceNetInit();
+        pool = sceNetPoolCreate("easyrpg-dns", 16 * 1024, 0);
+    }
+    rid = sceNetResolverCreate("easyrpg", pool, 0);
+    if (rid < 0)
+        return -1;
+    rc = sceNetResolverStartNtoa(rid, host, out, 5000000, 3, 0);
+    sceNetResolverDestroy(rid);
+    return rc < 0 ? -1 : 0;
+}
+
+int easyrpg_ps5_getaddrinfo(const char *node, const char *service,
+                            const struct addrinfo *hints, struct addrinfo **res)
+{
+    struct in_addr addr;
+    struct addrinfo *ai;
+    struct sockaddr_in *sin;
+    unsigned long port = 0;
+
+    *res = NULL;
+    if (hints && hints->ai_family != AF_UNSPEC && hints->ai_family != AF_INET)
+        return EAI_NONAME;
+    if (service) {
+        char *end;
+
+        port = strtoul(service, &end, 10);
+        if (*end || port > 65535)
+            return EAI_SERVICE;
+    }
+    if (!node) {
+        addr.s_addr = htonl(hints && (hints->ai_flags & AI_PASSIVE) ? INADDR_ANY : INADDR_LOOPBACK);
+    } else if (resolve_ipv4(node, &addr) != 0) {
+        return EAI_NONAME;
+    }
+    ai = calloc(1, sizeof *ai + sizeof *sin);
+    if (!ai)
+        return EAI_MEMORY;
+    sin = (struct sockaddr_in *) (ai + 1);
+    sin->sin_len = sizeof *sin;
+    sin->sin_family = AF_INET;
+    sin->sin_port = htons((unsigned short) port);
+    sin->sin_addr = addr;
+    ai->ai_family = AF_INET;
+    ai->ai_socktype = hints && hints->ai_socktype ? hints->ai_socktype : SOCK_STREAM;
+    ai->ai_protocol = hints ? hints->ai_protocol : 0;
+    ai->ai_addrlen = sizeof *sin;
+    ai->ai_addr = (struct sockaddr *) sin;
+    *res = ai;
+    return 0;
+}
+
+void easyrpg_ps5_freeaddrinfo(struct addrinfo *ai)
+{
+    while (ai) {
+        struct addrinfo *next = ai->ai_next;
+
+        free(ai);
+        ai = next;
+    }
 }
