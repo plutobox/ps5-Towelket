@@ -123,3 +123,7 @@ eboot.bin
 *.pem
 *.keystore
 *.jks
+ps5/deps/
+ps5/obj-native/
+ps5/build-ps5/
+ps5/*.objs

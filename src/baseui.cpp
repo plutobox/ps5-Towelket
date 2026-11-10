@@ -34,6 +34,8 @@
 #  include "platform/psvita/ui.h"
 #elif defined(__SWITCH__)
 #  include "platform/switch/ui.h"
+#elif defined(PLAYER_PS5)
+#  include "platform/ps5/ui.h"
 #endif
 
 std::shared_ptr<BaseUi> DisplayUi;

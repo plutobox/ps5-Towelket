@@ -83,6 +83,9 @@
 #  define SUPPORT_MOUSE
 #  define SUPPORT_JOYSTICK
 #  define SUPPORT_JOYSTICK_AXIS
+#elif defined(PLAYER_PS5)
+#  define SUPPORT_JOYSTICK
+#  define SUPPORT_JOYSTICK_AXIS
 #elif defined(__PS4__)
 #  define SUPPORT_ZOOM
 #  define SUPPORT_JOYSTICK

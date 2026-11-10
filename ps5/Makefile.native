@@ -1,0 +1,96 @@
+# Compile EasyRPG Player as a native PS5 title (eboot.bin) for ShadowMountPlus
+# and the PS5 homebrew catalog.
+#
+#   bash fetch-deps.sh                  -> deps/ (liblcf, pixman, inih)
+#   make -f Makefile.native             -> easyrpg-native.objs
+#   bash package-native.sh --build      -> build-ps5/app/dist/<TITLE_ID>.zip
+#
+# Everything is compiled with the boilerplate's compiler; the libraries come
+# from PacBrew (freetype, harfbuzz, libpng, fmt, mpg123, vorbis, sndfile,
+# libsamplerate, SDL2_ttf) and ps5-opengl's SDL2 (an OpenGL window and the
+# joystick; src/platform/ps5/ui.cpp shows the Player's frame with it).
+
+PS5DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+PLAYER := $(abspath $(PS5DIR)/..)
+DEPS   := $(PS5DIR)/deps
+
+PS5_NATIVE_TEMPLATE ?= $(HOME)/ps5-native-app-boilerplate
+PS5_NATIVE_SDK      ?= $(PS5_NATIVE_TEMPLATE)/.deps/native/ps5-payload-sdk
+PS5_PACBREW_PREFIX  ?= $(PS5_NATIVE_TEMPLATE)/.deps/pacbrew/v0.40.2/sysroot/user/homebrew
+PS5_SDL2_PREFIX     ?= $(HOME)/ps5-opengl/build/sdl-native/sdk
+PS5_OPENGL_PREFIX   ?= $(HOME)/ps5-opengl-sdk/ps5-opengl-sdk-1.0.2/sdk
+
+CC  := env PS5_PAYLOAD_SDK=$(PS5_NATIVE_SDK) sh $(PS5_NATIVE_TEMPLATE)/tooling/prospero-clang18
+CXX := $(CC)
+
+OUT := $(PS5DIR)/obj-native
+
+BASEFLAGS := -O2 -g -D__PROSPERO__ -DPS5_NATIVE -fPIC -ffunction-sections -fdata-sections
+SDLINC := -isystem $(PS5_SDL2_PREFIX)/include/SDL2 -D_THREAD_SAFE \
+          -isystem $(PS5_PACBREW_PREFIX)/include/SDL2 -isystem $(PS5_PACBREW_PREFIX)/include \
+          -isystem $(PS5_PACBREW_PREFIX)/include/freetype2 -isystem $(PS5_PACBREW_PREFIX)/include/harfbuzz
+
+# --- pixman ---------------------------------------------------------------
+PIXMAN_SRC := access access-accessors bits-image combine32 combine-float \
+              conical-gradient edge edge-accessors fast-path filter general glyph \
+              gradient-walker image implementation linear-gradient matrix noop \
+              radial-gradient region16 region32 solid-fill timer trap utils x86 \
+              sse2 ssse3
+PIXMAN_OBJS := $(addprefix $(OUT)/pixman/pixman-,$(addsuffix .o,$(PIXMAN_SRC))) $(OUT)/pixman/pixman.o
+PIXMANFLAGS := -DHAVE_CONFIG_H -I$(PS5DIR)/pixman -I$(OUT)/pixman-inc -I$(DEPS)/pixman/pixman \
+               -I$(DEPS)/pixman/pixman -w -msse2 -mssse3
+
+# --- liblcf ---------------------------------------------------------------
+LCF := $(DEPS)/liblcf
+LCF_SRC := $(wildcard $(LCF)/src/*.cpp) $(wildcard $(LCF)/src/generated/*.cpp)
+LCF_OBJS := $(patsubst $(LCF)/src/%.cpp,$(OUT)/lcf/%.o,$(LCF_SRC)) $(OUT)/inih/ini.o
+LCFFLAGS := -std=c++17 -I$(OUT)/lcf-inc -I$(LCF)/src -I$(LCF)/src/generated -I$(DEPS)/inih -w
+
+# --- the Player -----------------------------------------------------------
+PLAYER_SRC := $(filter-out registry_wine,$(notdir $(basename $(wildcard $(PLAYER)/src/*.cpp))))
+PLAYER_OBJS := $(addprefix $(OUT)/player/,$(addsuffix .o,$(PLAYER_SRC))) \
+               $(addprefix $(OUT)/player-ps5/,ui.o audio.o main.o input_buttons.o)
+PLAYERDEFS := -DPLAYER_PS5 -DPLAYER_UI=Ps5Ui -DSUPPORT_AUDIO=1 -DHAVE_FREETYPE -DHAVE_HARFBUZZ \
+              -DHAVE_LIBMPG123 -DHAVE_LIBSNDFILE -DHAVE_OGGVORBIS -DHAVE_LIBSAMPLERATE \
+              -DWANT_FMMIDI=1 -DWANT_DRWAV=1
+PLAYERINC := -I$(PLAYER)/src -I$(OUT)/lcf-inc -I$(LCF)/src -I$(LCF)/src/generated \
+             -I$(OUT)/pixman-inc -I$(DEPS)/pixman/pixman -I$(PS5DIR)/pixman
+PLAYERFLAGS := -std=c++17 -fexceptions -frtti -Wno-deprecated-declarations -Wno-narrowing -w
+
+all: easyrpg-native.objs
+
+easyrpg-native.objs: $(PIXMAN_OBJS) $(LCF_OBJS) $(PLAYER_OBJS)
+	@printf '%s\n' $^ > $@
+
+# Generated headers.
+$(OUT)/pixman-inc/pixman-version.h: $(DEPS)/pixman/pixman/pixman-version.h.in
+	@mkdir -p $(@D)
+	sed -e 's/@PIXMAN_VERSION_MAJOR@/0/g' -e 's/@PIXMAN_VERSION_MINOR@/43/g' \
+	    -e 's/@PIXMAN_VERSION_MICRO@/4/g' $< > $@
+$(OUT)/lcf-inc/lcf/config.h:
+	@mkdir -p $(@D)
+	printf '#define LCF_SUPPORT_ICU 0\n#define LCF_SUPPORT_XML 0\n#define LCF_SUPPORT_INI 1\n' > $@
+
+$(OUT)/pixman/%.o: $(DEPS)/pixman/pixman/%.c $(OUT)/pixman-inc/pixman-version.h
+	@mkdir -p $(@D)
+	$(CC) $(BASEFLAGS) $(PIXMANFLAGS) -c -o $@ $<
+$(OUT)/inih/ini.o: $(DEPS)/inih/ini.c
+	@mkdir -p $(@D)
+	$(CC) $(BASEFLAGS) -w -c -o $@ $<
+$(OUT)/lcf/%.o: $(LCF)/src/%.cpp $(OUT)/lcf-inc/lcf/config.h
+	@mkdir -p $(@D)
+	$(CXX) $(BASEFLAGS) $(LCFFLAGS) -c -o $@ $<
+
+HEADERS := $(wildcard $(PLAYER)/src/*.h $(PLAYER)/src/platform/ps5/*.h)
+$(OUT)/player/%.o: $(PLAYER)/src/%.cpp $(HEADERS) $(OUT)/lcf-inc/lcf/config.h $(OUT)/pixman-inc/pixman-version.h
+	@mkdir -p $(@D)
+	$(CXX) $(BASEFLAGS) $(PLAYERFLAGS) $(PLAYERDEFS) $(PLAYERINC) $(SDLINC) -c -o $@ $<
+$(OUT)/player-ps5/%.o: $(PLAYER)/src/platform/ps5/%.cpp $(HEADERS) $(OUT)/lcf-inc/lcf/config.h $(OUT)/pixman-inc/pixman-version.h
+	@mkdir -p $(@D)
+	$(CXX) $(BASEFLAGS) $(PLAYERFLAGS) $(PLAYERDEFS) $(PLAYERINC) $(SDLINC) \
+	    -isystem $(PS5_OPENGL_PREFIX)/include $(EXTRA) -c -o $@ $<
+
+clean:
+	rm -rf $(OUT) easyrpg-native.objs build-ps5
+
+.PHONY: all clean
