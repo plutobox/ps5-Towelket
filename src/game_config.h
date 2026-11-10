@@ -88,6 +88,7 @@ struct Game_ConfigPlayer {
 	BoolConfigParam settings_autosave{ "Save settings on exit", "Automatically save the settings on exit", "Player", "SettingsAutosave", false };
 	BoolConfigParam settings_in_title{ "Show settings on title screen", "Display settings menu item on the title screen", "Player", "SettingsInTitle", false };
 	BoolConfigParam settings_in_menu{ "Show settings in menu", "Display settings menu item on the menu screen", "Player", "SettingsInMenu", false };
+	BoolConfigParam skip_introduction{ "Skip Towel introduction", "Skip Towel's welcome conversation when starting the player", "Player", "SkipIntroduction", false };
 	EnumConfigParam<ConfigEnum::StartupLogos, 3> show_startup_logos{
 		"Startup Logos", "Logos that are displayed on startup", "Player", "StartupLogos", ConfigEnum::StartupLogos::Custom,
 		Utils::MakeSvArray("None", "Custom", "All"),

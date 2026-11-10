@@ -44,7 +44,7 @@
 std::shared_ptr<Scene> Scene::instance;
 std::vector<std::shared_ptr<Scene> > Scene::old_instances;
 std::vector<std::shared_ptr<Scene> > Scene::instances;
-const char Scene::scene_names[SceneMax][12] =
+const char Scene::scene_names[SceneMax][13] =
 {
 	"Null",
 	"Title",
@@ -69,7 +69,8 @@ const char Scene::scene_names[SceneMax][12] =
 	"GameBrowser",
 	"Teleport",
 	"Settings",
-	"Language"
+	"Language",
+	"Introduction"
 };
 
 enum PushPopOperation {
@@ -85,6 +86,7 @@ lcf::rpg::SaveSystem::Scene Scene::rpgRtSceneFromSceneType(SceneType t) {
 		case GameBrowser:
 		case SceneMax:
 		case Logo:
+		case Introduction:
 			break;
 		case Title:
 			return lcf::rpg::SaveSystem::Scene_title;
@@ -248,6 +250,7 @@ void Scene::Update() {
 	// Allow calling of settings scene everywhere except from Logo (Player is currently starting up)
 	// and from Map (has own handling to prevent breakage)
 	if (instance->type != Scene::Logo &&
+		instance->type != Scene::Introduction &&
 		instance->type != Scene::Map &&
 		Input::IsTriggered(Input::SETTINGS_MENU) &&
 		!Scene::Find(Scene::Settings)) {

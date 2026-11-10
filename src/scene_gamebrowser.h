@@ -61,6 +61,7 @@ public:
 	 * Starts the selected game.
 	 */
 	void BootGame();
+	void StartMenuMusic();
 
 	/** Options available in a Rpg2k3 menu. */
 	enum CommandOptionType {

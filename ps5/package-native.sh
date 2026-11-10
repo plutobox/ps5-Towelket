@@ -191,6 +191,8 @@ cabundle="$pacbrew/etc/ca-bundle.crt"
 [[ -f $cabundle ]] || die "missing CA bundle: $cabundle"
 cp "$cabundle" "$out/root/cacert.pem"
 cp "$ps5dir/DejaVu-LICENSE.txt" "$out/root/DejaVu-LICENSE.txt"
+cp "$player/resources/ps5/towel_protagonist.png" "$out/root/towel_protagonist.png"
+cp "$player/resources/ps5/towelket_menu.mid" "$out/root/towelket_menu.mid"
 
 # Title metadata and art.
 rm -rf "$out/sce_sys"

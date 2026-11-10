@@ -44,6 +44,9 @@ public:
 	bool DetectGame();
 	BitmapRef LoadLogo();
 	void DrawLogo(BitmapRef logo_img);
+	void DrawEdition();
+	void AnimateLogo();
+	void TransitionOut(SceneType next_scene) override;
 	void DrawBackground(Bitmap& dst) override;
 	void DrawTextOnLogo(bool verbose);
 
@@ -51,6 +54,7 @@ public:
 
 private:
 	std::unique_ptr<Sprite> logo;
+	std::unique_ptr<Sprite> edition;
 	BitmapRef logo_img;
 	int frame_counter;
 	std::vector<std::vector<uint8_t>> logos;

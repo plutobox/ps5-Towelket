@@ -20,6 +20,7 @@
 
 #include <memory>
 #include "options.h"
+#include "audio.h"
 #include "scene_settings.h"
 #include "audio_midi.h"
 #include "audio_secache.h"
@@ -29,8 +30,10 @@
 #include "player.h"
 #include "scene_logo.h"
 #include "bitmap.h"
-#include "audio.h"
 #include "output.h"
+#ifdef _WIN32
+#  include <SDL3/SDL.h>
+#endif
 #ifdef PLAYER_PS5
 #  include "platform/ps5/library.h"
 #  include <cstdio>
@@ -46,7 +49,33 @@ void Scene_GameBrowser::Start() {
 	Main_Data::game_system->SetSystemGraphic(CACHE_DEFAULT_BITMAP, lcf::rpg::System::Stretch_stretch, lcf::rpg::System::Font_gothic);
 	stack.push_back({ FileFinder::Game(), 0 });
 	CreateWindows();
+	StartMenuMusic();
 	Game_Clock::ResetFrame(Game_Clock::now());
+}
+
+void Scene_GameBrowser::StartMenuMusic() {
+	std::string music_path;
+#ifdef PLAYER_PS5
+	music_path = "/app0/towelket_menu.mid";
+#elif defined(_WIN32)
+	const char* base_path = SDL_GetBasePath();
+	if (base_path) {
+		music_path = FileFinder::MakePath(base_path, "towelket_menu.mid");
+		SDL_free(const_cast<char*>(base_path));
+	}
+#endif
+
+	if (music_path.empty()) {
+		return;
+	}
+
+	auto stream = FileFinder::Root().OpenInputStream(music_path);
+	if (!stream) {
+		Output::Warning("Could not load the Towelket menu music");
+		return;
+	}
+
+	Audio().BGM_Play(std::move(stream), 80, 100, 0, 50);
 }
 
 void Scene_GameBrowser::Continue(SceneType /* prev_scene */) {
@@ -79,7 +108,6 @@ void Scene_GameBrowser::vUpdate() {
 		BootGame();
 		return;
 	}
-
 	command_window->Update();
 	gamelist_window->Update();
 #ifdef PLAYER_PS5
@@ -140,7 +168,6 @@ void Scene_GameBrowser::CreateWindows() {
 	about_window->Refresh();
 	about_window->SetVisible(false);
 }
-
 void Scene_GameBrowser::UpdateCommand() {
 	int menu_index = command_window->GetIndex();
 
@@ -183,6 +210,7 @@ void Scene_GameBrowser::UpdateCommand() {
 				if (stack.size() == 1 && !gamelist_window->HasValidEntry()) {
 					return;
 				}
+				Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 				command_window->SetActive(false);
 				command_window->SetIndex(-1);
 				gamelist_window->SetActive(true);
@@ -190,6 +218,7 @@ void Scene_GameBrowser::UpdateCommand() {
 				break;
 #ifdef PLAYER_PS5
 			case Library:
+				Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 				command_window->SetActive(false);
 				command_window->SetIndex(-1);
 				gamelist_window->SetActive(false);
@@ -201,9 +230,11 @@ void Scene_GameBrowser::UpdateCommand() {
 			case About:
 				break;
 			case Options:
+				Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 				Scene::Push(std::make_shared<Scene_Settings>());
 				break;
 			default:
+				Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 				Scene::Pop();
 		}
 	}
@@ -211,15 +242,18 @@ void Scene_GameBrowser::UpdateCommand() {
 
 void Scene_GameBrowser::UpdateGameListSelection() {
 	if (Input::IsTriggered(Input::CANCEL)) {
+		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
 		command_window->SetActive(true);
 		command_window->SetIndex(0);
 		gamelist_window->SetActive(false);
 		old_gamelist_index = gamelist_window->GetIndex();
 		gamelist_window->SetIndex(-1);
 	} else if (Input::IsTriggered(Input::DECISION)) {
+		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 		load_window->SetVisible(true);
 		game_loading = true;
 	} else if (Input::IsTriggered(Input::DEBUG_MENU) || Input::IsTriggered(Input::SHIFT)) {
+		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 		Player::debug_flag = true;
 		load_window->SetVisible(true);
 		game_loading = true;

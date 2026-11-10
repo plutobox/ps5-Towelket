@@ -26,6 +26,7 @@
 #include "options.h"
 #include "player.h"
 #include "scene_gamebrowser.h"
+#include "scene_introduction.h"
 #include "scene_settings.h"
 #include "output.h"
 #include "generated/logo.h"
@@ -33,8 +34,10 @@
 #include "utils.h"
 #include "rand.h"
 #include "text.h"
+#include "transition.h"
 #include "version.h"
 #include <ctime>
+#include <cmath>
 #include <memory>
 
 Scene_Logo::Scene_Logo() :
@@ -57,6 +60,7 @@ void Scene_Logo::Start() {
 		logo_img = LoadLogo();
 		DrawTextOnLogo(false);
 		DrawLogo(logo_img);
+		DrawEdition();
 	}
 }
 
@@ -73,6 +77,7 @@ void Scene_Logo::vUpdate() {
 	}
 
 	++frame_counter;
+	AnimateLogo();
 
 	if (Input::IsPressed(Input::SHIFT)) {
 		DrawTextOnLogo(true);
@@ -85,7 +90,7 @@ void Scene_Logo::vUpdate() {
 	}
 
 	// other logos do not invoke the slow CreateGameObjects: display them longer
-	bool frame_limit_reached = (frame_counter == (current_logo_index == 0 ? 60 : 90));
+	bool frame_limit_reached = (frame_counter == (current_logo_index == 0 ? 150 : 90));
 
 	if (skip_logos ||
 		frame_limit_reached ||
@@ -116,7 +121,11 @@ void Scene_Logo::vUpdate() {
 			}
 		}
 		else {
-			Scene::Push(std::make_shared<Scene_GameBrowser>(), true);
+			if (Player::player_config.skip_introduction.Get()) {
+				Scene::Push(std::make_shared<Scene_GameBrowser>(), true);
+			} else {
+				Scene::Push(std::make_shared<Scene_Introduction>(), true);
+			}
 		}
 	}
 }
@@ -182,6 +191,41 @@ void Scene_Logo::DrawLogo(BitmapRef logo_img) {
 	logo->SetBitmap(logo_img);
 	logo->SetX((Player::screen_width - logo->GetWidth()) / 2);
 	logo->SetY((Player::screen_height - logo->GetHeight()) / 2);
+}
+
+void Scene_Logo::DrawEdition() {
+	if (current_logo_index != 0) {
+		return;
+	}
+
+	auto edition_bitmap = Bitmap::Create(160, 16, true);
+	const Color shadow_color(92, 42, 62, 255);
+	const Color text_color(255, 150, 190, 255);
+	edition_bitmap->TextDraw(Rect(1, 1, 158, 15), shadow_color, "Towelket Edition", Text::AlignCenter);
+	edition_bitmap->TextDraw(Rect(0, 0, 160, 16), text_color, "Towelket Edition", Text::AlignCenter);
+
+	edition = std::make_unique<Sprite>();
+	edition->SetBitmap(edition_bitmap);
+}
+
+void Scene_Logo::AnimateLogo() {
+	if (!edition) {
+		return;
+	}
+
+	// Only the edition subtitle gets the playful bounce; the EasyRPG mark stays still.
+	const double phase = frame_counter * 0.015;
+	const double scale = 1.4 * (1.0 + std::sin(phase) * 0.06);
+	const double bounce = std::abs(std::sin(phase)) * -4.0;
+	edition->SetZoomX(scale);
+	edition->SetZoomY(scale);
+	edition->SetAngle(std::sin(phase * 0.6) * 0.06);
+	edition->SetX(static_cast<int>((Player::screen_width - edition->GetWidth() * scale) / 2));
+	edition->SetY(static_cast<int>((Player::screen_height - logo->GetHeight()) / 2 + 184 + bounce));
+}
+
+void Scene_Logo::TransitionOut(SceneType) {
+	Transition::instance().InitErase(Transition::TransitionFadeOut, this, 24);
 }
 
 void Scene_Logo::DrawBackground(Bitmap& dst) {

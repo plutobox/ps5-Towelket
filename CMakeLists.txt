@@ -321,6 +321,8 @@ add_library(${PROJECT_NAME} OBJECT
 	src/scene.h
 	src/scene_import.cpp
 	src/scene_import.h
+	src/scene_introduction.cpp
+	src/scene_introduction.h
 	src/scene_item.cpp
 	src/scene_item.h
 	src/scene_language.cpp
@@ -1223,6 +1225,17 @@ if(PLAYER_BUILD_EXECUTABLE AND ${PLAYER_TARGET_PLATFORM} MATCHES "^SDL.*$" AND N
 	endif()
 
 	target_link_libraries(${EXE_NAME} ${PROJECT_NAME})
+
+	if(WIN32)
+		# The introduction scene loads this from the application's working directory.
+		add_custom_command(TARGET ${EXE_NAME} POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				"${CMAKE_CURRENT_SOURCE_DIR}/resources/ps5/towel_protagonist.png"
+				"$<TARGET_FILE_DIR:${EXE_NAME}>/towel_protagonist.png"
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				"${CMAKE_CURRENT_SOURCE_DIR}/resources/ps5/towelket_menu.mid"
+				"$<TARGET_FILE_DIR:${EXE_NAME}>/towelket_menu.mid")
+	endif()
 
 	if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
 		# Do not confuse this with our own -DUSE_SDL
