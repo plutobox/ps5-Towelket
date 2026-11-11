@@ -49,7 +49,7 @@ if [[ -f $param_in ]]; then
     read -r param_title param_version < <(read_param)
 fi
 title_id=${TITLE_ID:-${param_title:-PPSA92046}}
-title_name=${TITLE_NAME:-EasyRPG Player}
+title_name=${TITLE_NAME:-Towelket}
 content_version=${CONTENT_VERSION:-${param_version:-01.000.000}}
 
 [[ $title_id =~ ^[A-Z]{4}[0-9]{5}$ ]] || die "bad TITLE_ID: $title_id"
