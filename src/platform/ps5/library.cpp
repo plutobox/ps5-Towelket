@@ -43,7 +43,7 @@ namespace {
 // Where the catalog is by default; a title's own file overrides it, e.g. to
 // try a catalog served from a PC on the local network.
 constexpr const char* kDefaultCatalogUrl =
-	"https://raw.githubusercontent.com/plutobox/ps5-Player/ps5/games.json";
+	"https://raw.githubusercontent.com/plutobox/ps5-Towelket/ps5/games.json";
 constexpr const char* kUrlOverrideFile = "/data/easyrpg/library-url.txt";
 constexpr const char* kGamesDir = "/data/easyrpg/games";
 constexpr const char* kCaBundle = "/app0/cacert.pem";
@@ -91,7 +91,7 @@ void SetCommonOptions(CURL* curl, const std::string& url) {
 	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024L);
 	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
 	curl_easy_setopt(curl, CURLOPT_CAINFO, kCaBundle);
-	curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (PlayStation 5) EasyRPG-Player");
+	curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (PlayStation 5) EasyRPG-Towelket");
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 	// A title has no ~/.curlrc or proxy variables, and no c-ares.
 	curl_easy_setopt(curl, CURLOPT_NOPROXY, "*");

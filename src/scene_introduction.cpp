@@ -38,9 +38,7 @@
 namespace {
 
 constexpr const char* kLines[] = {
-	"Hey! I'm Towel.",
-	"Pick a game from the list, and I'll be right here.",
-	"Let's get started!"
+	"Hey! My name is plutobox and I made this lil thang I like to call ps5-Towelket, a fork of another project EasyRPG (HUUUGE credit to them wowow.)",
 };
 
 constexpr unsigned kLineCount = sizeof(kLines) / sizeof(kLines[0]);
@@ -209,20 +207,30 @@ void Scene_Introduction::RefreshText() {
 
 	if (line == 1) {
 		dialogue_window->SetLines({
-			"Pick a game from the list,",
-			"and I'll be right here."
+			
 		});
 	} else if (line == 2) {
+		dialogue_window->SetLines({ 
+		});
+			"This fork is special becuase it has several interesting modifications, one of which you are seeing right now. ;) This dialogue isn't normal, I'm really smart."
 		dialogue_window->SetLines({
-			"Pick a game from the list,",
-			"and I'll be right here."
+			"This port of EasyRPG is limited to '''secial''' series of games called Towelket (NOT FOR KIDS, GRAPHIC). You will never forget playing them if you get through the first 3 entries in the series. There are quite a few. I think like 14?"
+		});
+		dialogue_window->SetLines({
+			"Towelket is a special game. Towelket 3 came out first, then Towelket 2, then Towelket 1. You don't have to play any of them in order, but the first 3 are highly regarded."
+		});
+		dialogue_window->SetLines({
+			"Look, I've been up for over 24 hours so my head isn't on straight. I think that's why I ported this fucking series, I'm wired man, time for bed. Please give these games a shot."
+		});
+		dialogue_window->SetLines({
+			"Oh wait wait. Directions. These games aren't shipped with the Towelket releases. You will have to go to library and click on them and then theyll download. Sorry for any bugs."
 		});
 	} else {
 		dialogue_window->SetLines({ kLines[line] });
 	}
 	// Window_Help places right-aligned words relative to the same origin;
 	// keeping this left-aligned prevents those words from stacking together.
-	prompt_window->SetText("Towel - Z  Next", Font::ColorHeal);
+	prompt_window->SetText("plutobox - X  Next", Font::ColorHeal);
 }
 
 void Scene_Introduction::FinishIntroduction() {
@@ -237,5 +245,5 @@ void Scene_Introduction::SayGoodbye() {
 	skip_window->SetActive(false);
 	skip_window->SetVisible(false);
 	prompt_window->SetVisible(false);
-	dialogue_window->SetLines({ "Fine." });
+	dialogue_window->SetLines({ "Fine. Plutobox - out. If you try any of them, try the third in the series 'Towelket: One More Time'. Peace." });
 }
