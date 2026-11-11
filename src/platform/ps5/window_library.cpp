@@ -21,6 +21,7 @@
 #include "font.h"
 #include "text.h"
 
+#include <cctype>
 #include <cstdio>
 
 namespace {
@@ -43,7 +44,32 @@ Window_Library::Window_Library(int ix, int iy, int iwidth, int iheight) :
 }
 
 void Window_Library::SetEntries(std::vector<Ps5Library::Entry> new_entries) {
-	entries = std::move(new_entries);
+	all_entries = std::move(new_entries);
+	ApplyFilter();
+}
+
+void Window_Library::SetFilter(const std::string& text) {
+	filter = text;
+	ApplyFilter();
+	SetIndex(entries.empty() ? -1 : 0);
+}
+
+void Window_Library::ApplyFilter() {
+	auto lower = [](std::string s) {
+		for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+		return s;
+	};
+	const std::string needle = lower(filter);
+	entries.clear();
+	for (const auto& e : all_entries) {
+		if (needle.empty() || lower(e.name).find(needle) != std::string::npos) {
+			entries.push_back(e);
+		}
+	}
+	if (entries.empty() && !all_entries.empty()) {
+		SetMessage("No games match \"" + filter + "\".", false);
+		return;
+	}
 	Refresh();
 }
 
@@ -104,6 +130,11 @@ void Window_Library::DrawItem(int index) {
 		return;
 	}
 
+	if (e.url.empty()) {
+		contents->TextDraw(rect.x, rect.y, Font::ColorDisabled, e.name);
+		contents->TextDraw(rect.width, rect.y, Font::ColorDisabled, "No download yet", Text::AlignRight);
+		return;
+	}
 	contents->TextDraw(rect.x, rect.y, installed ? Font::ColorDisabled : Font::ColorDefault, e.name);
 	std::string status = installed ? "Installed" : (e.size > 0 ? Megabytes(e.size) : "");
 	if (!status.empty()) {

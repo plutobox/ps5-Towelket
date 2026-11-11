@@ -49,7 +49,7 @@ LCFFLAGS := -std=c++17 -isystem $(PS5_PACBREW_PREFIX)/include -I$(OUT)/lcf-inc -
 # --- the Player -----------------------------------------------------------
 PLAYER_SRC := $(filter-out registry_wine,$(notdir $(basename $(wildcard $(PLAYER)/src/*.cpp))))
 PLAYER_OBJS := $(addprefix $(OUT)/player/,$(addsuffix .o,$(PLAYER_SRC))) \
-               $(addprefix $(OUT)/player-ps5/,ui.o audio.o main.o input_buttons.o library.o window_library.o)
+               $(addprefix $(OUT)/player-ps5/,ui.o audio.o main.o input_buttons.o library.o window_library.o text_input.o)
 PLAYERDEFS := -DPLAYER_PS5 -DPLAYER_UI=Ps5Ui -DSUPPORT_AUDIO=1 -DHAVE_FREETYPE -DHAVE_HARFBUZZ \
               -DHAVE_LIBMPG123 -DHAVE_LIBSNDFILE -DHAVE_OGGVORBIS -DHAVE_LIBSAMPLERATE \
               -DWANT_FMMIDI=1 -DWANT_DRWAV=1

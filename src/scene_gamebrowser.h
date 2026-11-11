@@ -95,6 +95,8 @@ private:
 #ifdef PLAYER_PS5
 	/** Downloadable games (the game library). */
 	std::unique_ptr<Window_Library> library_window;
+	std::unique_ptr<Window_Help> search_window;
+	void UpdateSearchText();
 
 	void UpdateLibrary();
 	void UpdateLibraryStatus();

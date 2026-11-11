@@ -35,6 +35,9 @@ public:
 
 	/** Shows the games. */
 	void SetEntries(std::vector<Ps5Library::Entry> entries);
+	/** Shows only the games whose name contains the text (any case); "" shows all. */
+	void SetFilter(const std::string& text);
+	const std::string& GetFilter() const { return filter; }
 	/** Shows a message instead of the games. */
 	void SetMessage(const std::string& message, bool error);
 	/** Redraws the list (after a game was installed). */
@@ -51,7 +54,11 @@ public:
 	void DrawItem(int index);
 
 private:
+	void ApplyFilter();
+
+	std::vector<Ps5Library::Entry> all_entries;
 	std::vector<Ps5Library::Entry> entries;
+	std::string filter;
 	std::string busy_id;
 	std::string busy_status;
 };

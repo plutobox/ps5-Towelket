@@ -24,6 +24,7 @@
 #include <curl/curl.h>
 
 #include <atomic>
+#include <chrono>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -665,7 +666,18 @@ void CatalogWorker() {
 	}
 }
 
+// An attempt that has received nothing after this long is dropped and retried
+// (a connection sometimes sits idle for a minute; a fresh one starts at once).
+constexpr int kStallSeconds = 12;
+constexpr int kAttempts = 5;
+std::atomic<bool> attempt_stalled{false};
+std::chrono::steady_clock::time_point attempt_start;
+
 int ProgressCallback(void*, curl_off_t total, curl_off_t now, curl_off_t, curl_off_t) {
+	if (now == 0 && std::chrono::steady_clock::now() - attempt_start > std::chrono::seconds(kStallSeconds)) {
+		attempt_stalled = true;
+		return 1;
+	}
 	{
 		std::lock_guard<std::mutex> guard(lock);
 		download_status.done = now;
@@ -696,24 +708,43 @@ void DownloadWorker(Entry entry) {
 		error = "Networking could not start";
 		std::fclose(file);
 	} else if (file) {
-		CURL* curl = curl_easy_init();
+		CURL* curl = nullptr;
 		char detail[CURL_ERROR_SIZE] = "";
-		if (!curl) {
-			error = "Networking could not start";
-			std::fclose(file);
-		} else {
+		CURLcode code = CURLE_OK;
+		for (int attempt = 1; attempt <= kAttempts; ++attempt) {
+			curl = curl_easy_init();
+			if (!curl) break;
+			detail[0] = 0;
+			attempt_stalled = false;
+			attempt_start = std::chrono::steady_clock::now();
 			SetCommonOptions(curl, url);
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, FileWriteCallback);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
 			curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, detail);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallback);
-			CURLcode code = curl_easy_perform(curl);
+			code = curl_easy_perform(curl);
 			ReleaseCurl(curl);
+			const bool retry = !cancel_requested && attempt < kAttempts && attempt_stalled
+				&& code == CURLE_ABORTED_BY_CALLBACK;
+			if (!retry) break;
+			Output::Debug("Library: no data after {} s, trying again ({}/{})", kStallSeconds, attempt + 1, kAttempts);
+			std::fclose(file);
+			file = std::fopen(part.c_str(), "wb");
+			if (!file) { code = CURLE_WRITE_ERROR; break; }
+		}
+		if (!curl) {
+			error = "Networking could not start";
+			if (file) std::fclose(file);
+		} else if (!file) {
+			error = "Could not reopen the download file";
+		} else {
 			const bool flushed = std::fflush(file) == 0;
 			std::fclose(file);
 
-			if (code == CURLE_ABORTED_BY_CALLBACK) {
+			if (code == CURLE_ABORTED_BY_CALLBACK && attempt_stalled && !cancel_requested) {
+				error = "The server is not responding; try again later";
+			} else if (code == CURLE_ABORTED_BY_CALLBACK) {
 				error = "Cancelled";
 			} else if (code != CURLE_OK) {
 				error = Describe(code, detail);
@@ -789,8 +820,8 @@ bool ReadGames(Json& j, std::vector<Entry>& entries) {
 	while (true) {
 		Entry e;
 		if (!ReadEntry(j, e)) return false;
-		if (!ValidId(e.id) || e.url.empty()) {
-			Output::Debug("Library: skipping entry '{}' (bad id or no url)", e.name);
+		if (!ValidId(e.id)) {
+			Output::Debug("Library: skipping entry '{}' (bad id)", e.name);
 		} else {
 			if (e.name.empty()) e.name = e.id;
 			entries.push_back(std::move(e));
