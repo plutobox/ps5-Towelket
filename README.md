@@ -50,6 +50,8 @@ on a console that already runs homebrew; nothing here touches the system.
 * **Games:** put each game in its own folder under `/data/easyrpg/games/`
   (e.g. over FTP) and pick it in the game browser. Saves go beside the game.
   RTP, if a game needs it, goes in `/data/easyrpg/rtp/2000` or `/2003`.
+* **Release order:** Library entries show each original game's release year
+  and its position in the Towelket series. See [release dates and sources](ps5/catalog-release-order.md).
 * **Library:** the game browser's *Library* tab downloads games from the
   catalog `games.json` in this repository (fetched from GitHub, over HTTPS).
   Pick a game with Cross; Circle cancels a download. It is saved as a ZIP in
@@ -79,6 +81,9 @@ Building (in WSL, with `~/ps5-native-app-boilerplate`, `~/ps5-opengl` and
 
 The Player and its libraries use PS5 builds only (PacBrew and ps5-opengl's
 SDL2). The code is in `src/platform/ps5/`.
+
+For a repository-local toolchain and GitHub Actions releases, see
+[PS5 builds and releases](ps5/releases.md).
 
 ## Daily builds
 

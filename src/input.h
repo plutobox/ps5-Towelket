@@ -105,6 +105,10 @@ namespace Input {
 	 */
 	bool IsTriggered(InputButton button);
 
+	/** Cancel in application menus. On PS5/Windows, Circle and Square go back;
+	 * Square keeps its normal SHIFT/run action inside a game. */
+	bool IsMenuCancelTriggered();
+
 	/**
 	 * Gets if a button is being repeated. A button is being
 	 * repeated while it is maintained pressed and a

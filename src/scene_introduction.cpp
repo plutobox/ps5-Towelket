@@ -150,6 +150,23 @@ void Scene_Introduction::vUpdate() {
 		return;
 	}
 
+	if (Input::IsMenuCancelTriggered()) {
+		if (confirming_skip) {
+			confirming_skip = false;
+			skip_window->ReplaceCommands({ "Skip this time", "No" });
+			skip_window->SetIndex(1);
+		} else if (choosing_skip) {
+			choosing_skip = false;
+			skip_window->SetActive(false);
+			skip_window->SetVisible(false);
+			prompt_window->SetVisible(true);
+		} else if (line > 0) {
+			--line;
+		}
+		RefreshText();
+		return;
+	}
+
 	if (choosing_skip) {
 		skip_window->Update();
 		if (Input::IsTriggered(Input::DECISION) || Input::IsTriggered(Input::MOUSE_LEFT)) {

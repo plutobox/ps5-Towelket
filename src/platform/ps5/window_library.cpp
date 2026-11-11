@@ -21,7 +21,6 @@
 #include "font.h"
 #include "text.h"
 
-#include <cctype>
 #include <cstdio>
 
 namespace {
@@ -41,35 +40,11 @@ std::string Megabytes(int64_t bytes) {
 Window_Library::Window_Library(int ix, int iy, int iwidth, int iheight) :
 	Window_Selectable(ix, iy, iwidth, iheight) {
 	column_max = 1;
+	SetMenuItemHeight(32);
 }
 
 void Window_Library::SetEntries(std::vector<Ps5Library::Entry> new_entries) {
-	all_entries = std::move(new_entries);
-	ApplyFilter();
-}
-
-void Window_Library::SetFilter(const std::string& text) {
-	filter = text;
-	ApplyFilter();
-	SetIndex(entries.empty() ? -1 : 0);
-}
-
-void Window_Library::ApplyFilter() {
-	auto lower = [](std::string s) {
-		for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-		return s;
-	};
-	const std::string needle = lower(filter);
-	entries.clear();
-	for (const auto& e : all_entries) {
-		if (needle.empty() || lower(e.name).find(needle) != std::string::npos) {
-			entries.push_back(e);
-		}
-	}
-	if (entries.empty() && !all_entries.empty()) {
-		SetMessage("No games match \"" + filter + "\".", false);
-		return;
-	}
+	entries = std::move(new_entries);
 	Refresh();
 }
 
@@ -123,22 +98,25 @@ void Window_Library::DrawItem(int index) {
 	const auto& e = entries[index];
 	const bool installed = Ps5Library::IsInstalled(e);
 
-	if (!busy_id.empty() && e.id == busy_id) {
-		// being downloaded: the name in green, the progress where the size is
-		contents->TextDraw(rect.x, rect.y, Font::ColorHeal, e.name);
-		contents->TextDraw(rect.width, rect.y, Font::ColorHeal, busy_status, Text::AlignRight);
-		return;
+	const bool busy = !busy_id.empty() && e.id == busy_id;
+	const int name_color = busy ? Font::ColorHeal
+		: installed ? Font::ColorDisabled : Font::ColorDefault;
+	// Keep dates on a separate line so long titles cannot obscure them.
+	contents->TextDraw(Rect(rect.x, rect.y, rect.width, 12), name_color, e.name);
+	std::string detail;
+	if (!e.original_release.empty()) {
+		detail = "Original: " + e.original_release;
 	}
-
-	if (e.url.empty()) {
-		contents->TextDraw(rect.x, rect.y, Font::ColorDisabled, e.name);
-		contents->TextDraw(rect.width, rect.y, Font::ColorDisabled, "No download yet", Text::AlignRight);
-		return;
+	if (e.series_order > 0) {
+		if (!detail.empty()) detail += " | ";
+		detail += "Series #" + std::to_string(e.series_order);
 	}
-	contents->TextDraw(rect.x, rect.y, installed ? Font::ColorDisabled : Font::ColorDefault, e.name);
-	std::string status = installed ? "Installed" : (e.size > 0 ? Megabytes(e.size) : "");
+	contents->TextDraw(rect.x, rect.y + 14, Font::ColorDefault, detail);
+	const std::string status = busy ? busy_status
+		: installed ? "Installed" : (e.size > 0 ? Megabytes(e.size) : "");
 	if (!status.empty()) {
-		contents->TextDraw(rect.width, rect.y, installed ? Font::ColorHeal : Font::ColorDefault, status,
-			Text::AlignRight);
+		contents->TextDraw(rect.x + rect.width, rect.y + 14,
+			busy || installed ? Font::ColorHeal : Font::ColorDefault,
+			status, Text::AlignRight);
 	}
 }

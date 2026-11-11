@@ -1,0 +1,10 @@
+Generated with the built-in image_gen tool.
+Reference: resources/ps5/towel_protagonist.png
+Final packaging: nearest-neighbour resize to 512x512, opaque RGBA PNG.
+
+Final prompt:
+Use case: compositing
+Asset type: PS5 home-screen application icon, square PNG intended for final 512x512 packaging.
+Input image 1 is the existing Towelket pixel-art character to preserve, not a palette reference for the background.
+Primary request: create a clean square app icon from this exact character, replacing the solid bright green chroma-key backdrop with a flat neutral charcoal background (#292b32). Center the complete existing character in the square with comfortable margins on every side. Character occupies approximately 75 percent of image height.
+Constraints: preserve the reference character's exact face, expression, ears, black pixel outlines, white head, pink cheeks and pink cross on the gray outfit, short arms and feet. Keep crisp hard square pixel edges, use nearest-neighbor-like scaling; no smoothing, restyling, new shading, or new details. Remove all bright green backdrop pixels around and between the character's features. Solid opaque neutral charcoal background across the entire square, no transparency. No lettering, no logos, no frame, no glow, no shadow, no decorative elements. Keep the original pose and proportions. Deliver a single square icon only.

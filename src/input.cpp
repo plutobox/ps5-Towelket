@@ -257,6 +257,15 @@ bool Input::IsTriggered(InputButton button) {
 	return triggered[button];
 }
 
+bool Input::IsMenuCancelTriggered() {
+#if defined(PLAYER_PS5) || defined(_WIN32)
+	if (IsRawKeyTriggered(Keys::JOY_B) || IsRawKeyTriggered(Keys::JOY_X)) {
+		return true;
+	}
+#endif
+	return IsTriggered(CANCEL);
+}
+
 bool Input::IsRepeated(InputButton button) {
 	assert(!IsSystemButton(button));
 	WaitInput(true);

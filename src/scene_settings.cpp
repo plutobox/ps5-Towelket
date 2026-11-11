@@ -226,7 +226,7 @@ void Scene_Settings::vUpdate() {
 
 	SetMode(opt_mode);
 
-	if (Input::IsTriggered(Input::CANCEL) && opt_mode != Window_Settings::eInputButtonAdd) {
+	if (Input::IsMenuCancelTriggered() && opt_mode != Window_Settings::eInputButtonAdd) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Game_System::SFX_Cancel));
 
 		if (number_window) {

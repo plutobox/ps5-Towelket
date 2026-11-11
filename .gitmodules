@@ -1,3 +1,6 @@
 [submodule "builds/libretro/libretro-common"]
 	path = builds/libretro/libretro-common
 	url = https://github.com/libretro/libretro-common
+[submodule "ps5/toolchain/boilerplate"]
+	path = ps5/toolchain/boilerplate
+	url = https://github.com/drakmor/ps5-native-app-boilerplate.git

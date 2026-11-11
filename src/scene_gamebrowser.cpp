@@ -207,9 +207,16 @@ void Scene_GameBrowser::UpdateCommand() {
 			break;
 	}
 
-	if (Input::IsTriggered(Input::CANCEL)) {
+	if (Input::IsMenuCancelTriggered()) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
-		Scene::Pop();
+		// The browser is the application's root scene. Back must never pop it;
+		// quitting is an explicit choice on the Exit tab.
+		command_window->SetIndex(GameList);
+		gamelist_window->SetVisible(true);
+		about_window->SetVisible(false);
+#ifdef PLAYER_PS5
+		library_window->SetVisible(false);
+#endif
 	} else if (Input::IsTriggered(Input::DECISION)) {
 
 		switch (menu_index) {
@@ -248,8 +255,15 @@ void Scene_GameBrowser::UpdateCommand() {
 }
 
 void Scene_GameBrowser::UpdateGameListSelection() {
-	if (Input::IsTriggered(Input::CANCEL)) {
+	if (Input::IsMenuCancelTriggered()) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
+		if (stack.size() > 1) {
+			const int index = stack.back().index;
+			stack.pop_back();
+			gamelist_window->Refresh(stack.back().filesystem, stack.size() > 1);
+			gamelist_window->SetIndex(index);
+			return;
+		}
 		command_window->SetActive(true);
 		command_window->SetIndex(0);
 		gamelist_window->SetActive(false);
@@ -310,11 +324,12 @@ void Scene_GameBrowser::BootGame() {
 		// Not a game: Open as directory
 		load_window->SetVisible(false);
 		game_loading = false;
+		const int parent_index = gamelist_window->GetIndex();
 		if (!gamelist_window->Refresh(entry.fs, true)) {
 			Output::Warning("The selected file or directory cannot be opened");
 			return;
 		}
-		stack.push_back({ entry.fs, gamelist_window->GetIndex() });
+		stack.push_back({ entry.fs, parent_index });
 		gamelist_window->SetIndex(0);
 
 		return;
@@ -449,7 +464,7 @@ void Scene_GameBrowser::UpdateLibrary() {
 		return;
 	}
 
-	if (Input::IsTriggered(Input::CANCEL)) {
+	if (Input::IsMenuCancelTriggered()) {
 		if (library_downloading) {
 			Ps5Library::CancelDownload();
 			return;

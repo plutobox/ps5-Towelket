@@ -314,13 +314,16 @@ bool ReadEntry(Json& j, Entry& e) {
 		std::string key;
 		if (!j.String(key) || !j.Expect(':')) return false;
 		j.Ws();
-		if (key == "id" || key == "name" || key == "author" || key == "license" || key == "url") {
+		if (key == "id" || key == "name" || key == "author" || key == "license"
+				|| key == "url" || key == "original_release") {
 			std::string v;
 			if (!j.String(v)) return false;
 			(key == "id" ? e.id : key == "name" ? e.name : key == "author" ? e.author
-				: key == "license" ? e.license : e.url) = v;
+				: key == "license" ? e.license : key == "url" ? e.url : e.original_release) = v;
 		} else if (key == "size") {
 			if (!j.Number(e.size)) return false;
+		} else if (key == "series_order") {
+			if (!j.Number(e.series_order)) return false;
 		} else if (key == "upload") {
 			if (!j.Number(e.upload)) return false;
 		} else if (!j.Skip()) {

@@ -7,7 +7,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-3",
       "upload": 18325577,
-      "size": 17912300
+      "size": 17912300,
+      "original_release": "2007",
+      "series_order": 1
     },
     {
       "id": "towelket-one-more-time-2",
@@ -16,7 +18,9 @@
       "license": "Free on itch.io (R-15)",
       "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time-2",
       "upload": 9984524,
-      "size": 16926358
+      "size": 16926358,
+      "original_release": "2008",
+      "series_order": 2
     },
     {
       "id": "towelket-one-more-time",
@@ -25,7 +29,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time",
       "upload": 17215616,
-      "size": 23685629
+      "size": 23685629,
+      "original_release": "2009",
+      "series_order": 3
     },
     {
       "id": "towelket-6",
@@ -34,7 +40,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-6",
       "upload": 18850489,
-      "size": 26412681
+      "size": 26412681,
+      "original_release": "2009",
+      "series_order": 4
     },
     {
       "id": "towelket-4",
@@ -43,7 +51,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-4",
       "upload": 18850624,
-      "size": 30556345
+      "size": 30556345,
+      "original_release": "2009",
+      "series_order": 5
     },
     {
       "id": "towelket-fury",
@@ -52,7 +62,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-fury",
       "upload": 18851006,
-      "size": 26233484
+      "size": 26233484,
+      "original_release": "2010",
+      "series_order": 6
     },
     {
       "id": "towelket-one-more-time-5-gaugaus-bride",
@@ -61,7 +73,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-one-more-time-5-gaugaus-bride",
       "upload": 8519221,
-      "size": 33055117
+      "size": 33055117,
+      "original_release": "2010",
+      "series_order": 7
     },
     {
       "id": "wonder-girl-nekoashi-otome",
@@ -70,7 +84,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/wonder-girl-nekoashi-otome",
       "upload": 8643675,
-      "size": 28370173
+      "size": 28370173,
+      "original_release": "2010",
+      "series_order": 8
     },
     {
       "id": "laughing-warawau",
@@ -79,7 +95,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/laughing-warawau",
       "upload": 11127522,
-      "size": 279502133
+      "size": 279502133,
+      "original_release": "2011",
+      "series_order": 9
     },
     {
       "id": "fishing-for-the-moon-by-the-night-sea",
@@ -88,7 +106,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/fishing-for-the-moon-by-the-night-sea",
       "upload": 11628854,
-      "size": 53225365
+      "size": 53225365,
+      "original_release": "2012",
+      "series_order": 10
     },
     {
       "id": "towelket-0",
@@ -97,7 +117,9 @@
       "license": "Free on itch.io",
       "url": "https://patchy-illusion-team.itch.io/towelket-0",
       "upload": 9472074,
-      "size": 13388363
+      "size": 13388363,
+      "original_release": "2014",
+      "series_order": 11
     },
     {
       "id": "end-roll",
@@ -105,7 +127,8 @@
       "author": "vgperson",
       "license": "Freeware, from the author's site",
       "url": "https://vgperson.com/games/EndRoll201.zip",
-      "size": 108874932
+      "size": 108874932,
+      "original_release": "2016"
     }
   ]
 }

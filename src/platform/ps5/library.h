@@ -34,7 +34,9 @@
  *
  * The catalog is {"games": [{"id", "name", "author", "license", "url",
  * "size", "upload"}, ...]}; "size" (bytes) and "upload" (an itch.io file id)
- * are optional.
+ * are optional. "original_release" is a year or ISO date for the original
+ * game, and "series_order" is its release position within the series; both
+ * are optional and do not refer to the English translation or PS5 port.
  */
 namespace Ps5Library {
 
@@ -44,6 +46,8 @@ struct Entry {
 	std::string author;
 	std::string license;
 	std::string url;
+	std::string original_release;
+	int64_t series_order = 0;
 	int64_t size = 0;
 	int64_t upload = 0;   // itch.io: which of the page's files to take (0: the first)
 };
