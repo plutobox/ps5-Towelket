@@ -736,6 +736,8 @@ void DownloadWorker(Entry entry) {
 		if (!curl) {
 			error = "Networking could not start";
 			if (file) std::fclose(file);
+		} else if (!file) {
+			error = "Could not reopen the download file";
 		} else {
 			const bool flushed = std::fflush(file) == 0;
 			std::fclose(file);
