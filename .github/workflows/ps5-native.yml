@@ -147,7 +147,7 @@ jobs:
             else
               echo "## First release"
               echo
-              echo "- EasyRPG Player as a native PS5 title ($TITLE_ID), played with the DualSense."
+              echo "- Towelket as a native PS5 title ($TITLE_ID), played with the DualSense."
             fi
           } > "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
@@ -162,7 +162,7 @@ jobs:
           if ! git diff --quiet -- sce_sys/param.json; then
             git commit -q -m "PS5 native: contentVersion $RELEASE_TAG" -- sce_sys/param.json
           fi
-          git tag -a "$RELEASE_TAG" -m "EasyRPG Player for PS5 $RELEASE_TAG"
+          git tag -a "$RELEASE_TAG" -m "Towelket for PS5 $RELEASE_TAG"
           # Atomic: if ps5 moved during the build, neither the bump nor the
           # tag lands, and nothing is released.
           git push --atomic origin "HEAD:refs/heads/ps5" "refs/tags/$RELEASE_TAG"
@@ -178,5 +178,5 @@ jobs:
           fi
           gh release create "$RELEASE_TAG" "dist/$TITLE_ID.zip" \
             --verify-tag \
-            --title "EasyRPG Player for PS5 $RELEASE_TAG" \
+            --title "Towelket for PS5 $RELEASE_TAG" \
             --notes-file "$RUNNER_TEMP/notes.md"
